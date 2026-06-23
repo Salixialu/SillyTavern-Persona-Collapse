@@ -1,0 +1,13 @@
+{
+  "display_name": "人设折叠",
+  "loading_order": 15,
+  "requires": [],
+  "optional": [],
+  "js": "dist/index.js",
+  "css": "dist/style.css",
+  "author": "Antigravity",
+  "version": "3.0.0",
+  "license": "AGPL-3.0",
+  "homePage": "",
+  "auto_update": false
+}
