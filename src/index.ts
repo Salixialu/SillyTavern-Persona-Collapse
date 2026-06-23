@@ -229,7 +229,6 @@ function renderAvatarBlock(): void {
     block.querySelectorAll('.avatar-container').forEach(el => {
       el.classList.remove('cp2-parent-badge');
       el.removeAttribute('data-branch-count');
-      el.setAttribute('draggable', 'true');
     });
 
     if (!settings.enabled) return;
@@ -362,40 +361,9 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
 
     const dragHandle = document.createElement('i');
     dragHandle.className = 'fa-solid fa-bars cp2-variant-drag-handle';
-    dragHandle.title = '拖拽排序';
-    if (isMainCard) {
-      dragHandle.style.visibility = 'hidden'; // 主卡固定在第一位，不可拖拽
-    } else {
-      item.draggable = true;
-      item.dataset.variantId = memberId;
-      item.addEventListener('dragstart', e => {
-        e.dataTransfer?.setData('text/plain', memberId);
-        item.style.opacity = '0.5';
-      });
-      item.addEventListener('dragend', () => {
-        item.style.opacity = '1';
-        document.querySelectorAll('.cp2-variant-item').forEach((el: any) => el.style.borderTop = '');
-      });
-      item.addEventListener('dragover', e => {
-        e.preventDefault();
-        item.style.borderTop = '2px solid var(--SmartThemeQuoteColor)';
-      });
-      item.addEventListener('dragleave', e => {
-        item.style.borderTop = '';
-      });
-      item.addEventListener('drop', e => {
-        e.preventDefault();
-        e.stopPropagation();
-        item.style.borderTop = '';
-        const draggingId = e.dataTransfer?.getData('text/plain');
-        if (draggingId && draggingId !== memberId && !manager.isParent(draggingId)) {
-          // 将 draggingId 移动到 memberId 之前
-          manager.reorderChild(parentId, draggingId, memberId);
-          renderVariantsPanel(true);
-        }
-      });
-    }
-
+    dragHandle.title = '（Tauri 版不支持拖拽，请通过管理面板修改）';
+    dragHandle.style.opacity = '0.3';
+    
     item.appendChild(dragHandle);
 
     const name = getPersonaName(memberId);
@@ -754,171 +722,10 @@ function setupContextMenu(): void {
   });
 }
 
-// ==================== 拖拽：桌面鼠标 ====================
+// ==================== 拖拽功能（已在 Tauri 版本中移除） ====================
 
-let draggingId: string | null = null;
-
-function setupMouseDrag(): void {
-  const block = document.getElementById('user_avatar_block');
-  if (!block) return;
-
-  block.addEventListener('dragstart', evt => {
-    const settings = manager?.getSettings();
-    if (!settings?.enabled) return;
-    const container = (evt.target as Element).closest('.avatar-container');
-    if (!container) return;
-    draggingId = getAvatarId(container);
-    if (draggingId) container.classList.add('cp2-dragging');
-  });
-
-  block.addEventListener('dragover', evt => {
-    if (!draggingId) return;
-    // 阯止冒泡：防止 ST 全局 drop 处理器触发「不支持的文件类型」警告
-    evt.preventDefault();
-    evt.stopPropagation();
-    const container = (evt.target as Element).closest('.avatar-container');
-    if (!container) return;
-    const targetId = getAvatarId(container);
-    if (targetId && targetId !== draggingId) {
-      container.classList.add('cp2-drag-target');
-    }
-  });
-
-  block.addEventListener('dragenter', evt => {
-    if (!draggingId) return;
-    const container = (evt.target as Element).closest('.avatar-container');
-    if (container && getAvatarId(container) !== draggingId) container.classList.add('cp2-drag-target');
-  });
-
-  block.addEventListener('dragleave', evt => {
-    const container = (evt.target as Element).closest('.avatar-container');
-    container?.classList.remove('cp2-drag-target');
-  });
-
-  block.addEventListener('drop', evt => {
-    if (!draggingId) return;
-    // 立即停止冒泡和默认行为，无论是否命中目标
-    evt.preventDefault();
-    evt.stopPropagation();
-    const container = (evt.target as Element).closest('.avatar-container');
-    if (container) {
-      container.classList.remove('cp2-drag-target');
-      const targetId = getAvatarId(container);
-      if (targetId && targetId !== draggingId) {
-        const finalParentId = manager.findParentOf(targetId) || targetId;
-        manager.linkChild(finalParentId, draggingId);
-        toastr.success(`已将【${getPersonaName(draggingId)}】纳入【${getPersonaName(finalParentId)}】的分支`);
-        renderAvatarBlock();
-        renderVariantsPanel(true);
-      }
-    }
-    draggingId = null;
-  });
-
-  block.addEventListener('dragend', evt => {
-    const container = (evt.target as Element).closest('.avatar-container');
-    container?.classList.remove('cp2-dragging');
-    block.querySelectorAll('.cp2-drag-target').forEach(el => el.classList.remove('cp2-drag-target'));
-    draggingId = null;
-  });
-}
-
-// ==================== 拖拽：触屏长按 ====================
-
-let touchDragging = false;
-let touchDragId: string | null = null;
-let touchDragEl: Element | null = null;
-let touchTimer: ReturnType<typeof setTimeout> | null = null;
-let touchStartX = 0;
-let touchStartY = 0;
-let lastTouchTarget: Element | null = null;
-
-function setupTouchDrag(): void {
-  const block = document.getElementById('user_avatar_block');
-  if (!block) return;
-
-  block.addEventListener('touchstart', evt => {
-    const settings = manager?.getSettings();
-    if (!settings?.enabled) return;
-
-    const container = (evt.target as Element).closest('.avatar-container');
-    if (!container) return;
-
-    const id = getAvatarId(container);
-    if (!id) return;
-
-    const touch = evt.touches[0];
-    touchStartX = touch.clientX;
-    touchStartY = touch.clientY;
-
-    touchTimer = setTimeout(() => {
-      touchDragging = true;
-      touchDragId = id;
-      touchDragEl = container;
-      container.classList.add('cp2-dragging');
-      // 震动反馈（若支持）
-      if (navigator.vibrate) navigator.vibrate(50);
-    }, 500);
-  }, { passive: true });
-
-  block.addEventListener('touchmove', evt => {
-    const touch = evt.touches[0];
-    const dx = Math.abs(touch.clientX - touchStartX);
-    const dy = Math.abs(touch.clientY - touchStartY);
-
-    if (!touchDragging) {
-      // 若移动超 5px 则取消长按计时（视为滚动）
-      if (dx > 5 || dy > 5) {
-        if (touchTimer) { clearTimeout(touchTimer); touchTimer = null; }
-      }
-      return;
-    }
-
-    evt.preventDefault(); // 阻止滚动
-
-    // 计算当前手指下的元素
-    const el = document.elementFromPoint(touch.clientX, touch.clientY);
-    const container = el?.closest('.avatar-container') ?? null;
-
-    if (lastTouchTarget && lastTouchTarget !== container) {
-      lastTouchTarget.classList.remove('cp2-drag-target');
-    }
-
-    if (container && getAvatarId(container) !== touchDragId) {
-      container.classList.add('cp2-drag-target');
-      lastTouchTarget = container;
-    } else {
-      lastTouchTarget = null;
-    }
-  }, { passive: false });
-
-  block.addEventListener('touchend', evt => {
-    if (touchTimer) { clearTimeout(touchTimer); touchTimer = null; }
-
-    if (touchDragging && touchDragId) {
-      const touch = evt.changedTouches[0];
-      const el = document.elementFromPoint(touch.clientX, touch.clientY);
-      const container = el?.closest('.avatar-container') ?? null;
-      const targetId = container ? getAvatarId(container) : null;
-
-      if (targetId && targetId !== touchDragId) {
-        const finalParentId = manager.findParentOf(targetId) || targetId;
-        manager.linkChild(finalParentId, touchDragId);
-        toastr.success(`已将【${getPersonaName(touchDragId)}】纳入【${getPersonaName(finalParentId)}】的分支`);
-        renderAvatarBlock();
-        renderVariantsPanel(true);
-      }
-
-      touchDragEl?.classList.remove('cp2-dragging');
-      lastTouchTarget?.classList.remove('cp2-drag-target');
-    }
-
-    touchDragging = false;
-    touchDragId = null;
-    touchDragEl = null;
-    lastTouchTarget = null;
-  });
-}
+function setupMouseDrag(): void { /* No-op */ }
+function setupTouchDrag(): void { /* No-op */ }
 
 // ==================== 全局弹窗视觉分组 ====================
 
@@ -1087,11 +894,13 @@ function initExtensionSettings(): void {
   wrapper.querySelector('#cp2-btn-reset')?.addEventListener('click', () => {
     const s = manager.getSettings();
     s.manualGroups = {};
+    s.collapsedParents = [];
+    s.groupNames = {};
+    s.childMeta = {};
     saveSettingsDebounced();
-    updateAutoGroups();
     renderAvatarBlock();
     renderVariantsPanel(true);
-    toastr.success('已清空所有手动分组');
+    toastr.success('已重置所有分组');
   });
 }
 
