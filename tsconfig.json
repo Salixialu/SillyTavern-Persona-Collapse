@@ -14,9 +14,12 @@
     "outDir": "dist",
     "baseUrl": ".",
     "paths": {
+<<<<<<< HEAD
       "sillytavern/*": [
         "../../../02-development/types/sillytavern/*"
       ],
+=======
+>>>>>>> 4f0b745981550e95a66a32adf5b43f01a2cde104
       "@util/*": [
         "./util/*"
       ],

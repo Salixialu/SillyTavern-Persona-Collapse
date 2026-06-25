@@ -7,8 +7,12 @@
     "lint": "eslint",
     "lint:fix": "eslint --fix",
     "dump": "node dump_schema.ts",
+<<<<<<< HEAD
     "sync": "node tavern_sync.mjs",
     "zip": "node pack.mjs"
+=======
+    "sync": "node tavern_sync.mjs"
+>>>>>>> 4f0b745981550e95a66a32adf5b43f01a2cde104
   },
   "browserslist": [
     "defaults and partially supports es6-module"
@@ -69,7 +73,10 @@
     "typescript-eslint": "^8.62.0",
     "unplugin-auto-import": "^20.3.0",
     "unplugin-vue-components": "^29.2.0",
+<<<<<<< HEAD
     "vitest": "^4.1.9",
+=======
+>>>>>>> 4f0b745981550e95a66a32adf5b43f01a2cde104
     "vue-eslint-parser": "^10.4.1",
     "vue-loader": "^17.4.2",
     "vue-style-loader": "^4.1.3",
