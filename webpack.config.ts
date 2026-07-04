@@ -214,7 +214,11 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
       path: path.join(
         import.meta.dirname,
         'dist',
+<<<<<<< HEAD
         path.relative(import.meta.dirname, script_filepath.dir).replace(/^[^\\/]+(?:[\\/]|$)/, ''),
+=======
+        path.relative(import.meta.dirname, script_filepath.dir).replace(/^[^\\/]+[\\/]/, ''),
+>>>>>>> 24c09dd0d2e3a345ced6bd6449ff0c89cd686543
       ),
       chunkFilename: `${script_filepath.name}.[contenthash].chunk.js`,
       asyncChunks: true,
@@ -545,6 +549,7 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
       ) {
         return callback();
       }
+<<<<<<< HEAD
       if (request.startsWith('sillytavern/')) {
         const name = request.substring(12);
         // dist/index.js lives at scripts/extensions/third-party/<ext>/dist/
@@ -557,6 +562,8 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
         }
       }
 
+=======
+>>>>>>> 24c09dd0d2e3a345ced6bd6449ff0c89cd686543
       const global = {
         jquery: '$',
         lodash: '_',
