@@ -8,6 +8,7 @@
 @.cursor/rules/脚本.mdc
 @.cursor/rules/mvu变量框架.mdc
 @.cursor/rules/mvu角色卡.mdc
+<<<<<<< HEAD
 
 ---
 
@@ -38,3 +39,5 @@ pnpm watch   # 开发模式，文件变更自动重新编译
 
 ### 版本号
 在 `manifest.json` 的 `version` 字段修改，`pnpm zip` 会自动读取并命名 zip 文件。
+=======
+>>>>>>> 299b9bb0dd0e1b9c9863f20ca4cbc261e552bdd5
