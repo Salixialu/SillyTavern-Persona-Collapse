@@ -19,7 +19,7 @@ import { execSync } from 'node:child_process';
 const ROOT = import.meta.dirname;
 const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'manifest.json'), 'utf-8'));
 const version = manifest.version ?? '0.0.0';
-const outName = `persona-collapse-v${version}.zip`;
+const outName = `persona-collapse.zip`;
 
 // 输出到 releases/ 目录，方便集中查找历史版本
 const releasesDir = path.join(ROOT, 'releases');
