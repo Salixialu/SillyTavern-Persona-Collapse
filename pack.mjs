@@ -32,11 +32,7 @@ if (!fs.existsSync(path.join(ROOT, 'dist', 'index.js'))) {
   process.exit(1);
 }
 
-// 确保 dist/style.css 存在
-if (!fs.existsSync(path.join(ROOT, 'dist', 'style.css'))) {
-  fs.copyFileSync(path.join(ROOT, 'style.css'), path.join(ROOT, 'dist', 'style.css'));
-  console.log('📋 已将 style.css 复制到 dist/');
-}
+
 
 // 删除旧 zip
 if (fs.existsSync(outPath)) {
@@ -56,7 +52,7 @@ try {
   // 复制文件到临时目录
   fs.copyFileSync(path.join(ROOT, 'manifest.json'), path.join(pluginDir, 'manifest.json'));
   fs.copyFileSync(path.join(ROOT, 'dist', 'index.js'), path.join(distDir, 'index.js'));
-  fs.copyFileSync(path.join(ROOT, 'dist', 'style.css'), path.join(pluginDir, 'style.css'));
+  fs.copyFileSync(path.join(ROOT, 'style.css'), path.join(pluginDir, 'style.css'));
 
   // 压缩临时目录（保留 persona-collapse/ 顶级目录结构）
   const cmd = `powershell -NoProfile -Command "Compress-Archive -Path '${pluginDir}' -DestinationPath '${outPath}'"`;
