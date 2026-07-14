@@ -56,7 +56,7 @@ try {
   // 复制文件到临时目录
   fs.copyFileSync(path.join(ROOT, 'manifest.json'), path.join(pluginDir, 'manifest.json'));
   fs.copyFileSync(path.join(ROOT, 'dist', 'index.js'), path.join(distDir, 'index.js'));
-  fs.copyFileSync(path.join(ROOT, 'dist', 'style.css'), path.join(distDir, 'style.css'));
+  fs.copyFileSync(path.join(ROOT, 'dist', 'style.css'), path.join(pluginDir, 'style.css'));
 
   // 压缩临时目录（保留 persona-collapse/ 顶级目录结构）
   const cmd = `powershell -NoProfile -Command "Compress-Archive -Path '${pluginDir}' -DestinationPath '${outPath}'"`;
@@ -67,7 +67,7 @@ try {
   console.log(`📦 路径: ${outPath}`);
   console.log(`\n部署方法：`);
   console.log(`  将 zip 解压到 SillyTavern/public/scripts/extensions/third-party/`);
-  console.log(`  ⚠  解压后应为：third-party/persona-collapse/dist/index.js`);
+  console.log(`  ⚠  解压后应为：third-party/persona-collapse/manifest.json 等`);
 } finally {
   // 清理临时目录
   fs.rmSync(tmpDir, { recursive: true, force: true });
