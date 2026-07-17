@@ -28,6 +28,33 @@ declare module '*.vue' {
   export default component;
 }
 
+type BluetoothLEScanFilter = object;
+type BluetoothServiceUUID = string | number;
+type BluetoothDevice = object;
+type BluetoothRemoteGATTServer = object;
+
+declare module 'sillytavern/extensions' {
+  export const extension_settings: Record<string, any>;
+}
+
+declare module 'sillytavern/script' {
+  export const eventSource: any;
+  export const event_types: Record<string, string>;
+  export function saveSettingsDebounced(): void;
+}
+
+declare module 'sillytavern/power-user' {
+  export const power_user: any;
+}
+
+declare module 'sillytavern/popup' {
+  export const POPUP_TYPE: Record<string, any>;
+  export class Popup {
+    constructor(...args: any[]);
+    show(): void;
+  }
+}
+
 declare const YAML: typeof import('yaml');
 
 declare const z: typeof import('zod');

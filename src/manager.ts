@@ -3,9 +3,8 @@
  * 持有并操作 extension_settings 中的分组数据。
  */
 
-export interface ChildMeta {
-  note: string;
-}
+
+export type ChildMeta = Record<string, unknown>;
 
 export interface GroupSettings {
   enabled: boolean;
@@ -22,6 +21,7 @@ export class GroupManager {
   settings: GroupSettings;
   private saveCallback: () => void;
   private autoGroups: Record<string, string[]> = {};
+  private _effectiveCache: Record<string, string[]> | null = null;
 
   constructor(raw: Partial<GroupSettings> | undefined, saveCallback: () => void) {
     this.saveCallback = saveCallback;
@@ -62,9 +62,11 @@ export class GroupManager {
 
   setAutoGroups(groups: Record<string, string[]>): void {
     this.autoGroups = groups;
+    this._effectiveCache = null;
   }
 
   getEffectiveGroups(): Record<string, string[]> {
+    if (this._effectiveCache) return this._effectiveCache;
     const effective: Record<string, string[]> = JSON.parse(JSON.stringify(this.settings.manualGroups));
     const excluded = this.settings.excludedFromAuto || [];
 
@@ -90,6 +92,7 @@ export class GroupManager {
         effective[parentId].push(...validChildren);
       }
     }
+    this._effectiveCache = effective;
     return effective;
   }
 
@@ -110,8 +113,9 @@ export class GroupManager {
 
   /** 将 id 初始化为组长（空分支），无分支成员 */
   initGroup(parentId: string): void {
-    if (this.settings.manualGroups[parentId] !== undefined) return; // 已是组长
+    if (this.settings.manualGroups[parentId] !== undefined) return;
     this.settings.manualGroups[parentId] = [];
+    this._effectiveCache = null;
     this.saveCallback();
   }
 
@@ -147,6 +151,7 @@ export class GroupManager {
     if (!this.settings.manualGroups[parentId].includes(childId)) {
       this.settings.manualGroups[parentId].push(childId);
     }
+    this._effectiveCache = null;
     this.saveCallback();
   }
 
@@ -177,7 +182,10 @@ export class GroupManager {
       delete this.settings.childMeta[childId];
       changed = true;
     }
-    if (changed) this.saveCallback();
+    if (changed) {
+      this._effectiveCache = null;
+      this.saveCallback();
+    }
   }
 
   /** 在 parentId 的分支中，将 childId 移动到 targetId 的前面。若 targetId 为 null 则移到末尾 */
@@ -198,6 +206,7 @@ export class GroupManager {
     } else {
       children.push(childId);
     }
+    this._effectiveCache = null;
     this.saveCallback();
   }
 
@@ -229,6 +238,7 @@ export class GroupManager {
       this.settings.collapsedParents.push(newParentId);
     }
     
+    this._effectiveCache = null;
     this.saveCallback();
   }
 
@@ -243,8 +253,9 @@ export class GroupManager {
          if (!this.settings.excludedFromAuto.includes(child)) this.settings.excludedFromAuto.push(child);
       }
     }
-    if (this._disbandGroupInternal(parentId)) this.saveCallback();
-    else this.saveCallback(); // save excluded
+    this._disbandGroupInternal(parentId);
+    this._effectiveCache = null;
+    this.saveCallback();
   }
 
   private _disbandGroupInternal(parentId: string): boolean {
@@ -259,19 +270,6 @@ export class GroupManager {
     return true;
   }
 
-  /** 设置分支成员备注 */
-  setChildNote(childId: string, note: string): void {
-    const trimmed = note.trim();
-    if (trimmed === '') {
-      if (this.settings.childMeta[childId]) {
-        delete this.settings.childMeta[childId];
-        this.saveCallback();
-      }
-    } else {
-      this.settings.childMeta[childId] = { note: trimmed };
-      this.saveCallback();
-    }
-  }
 
   /** 设置分组名称 */
   setGroupName(parentId: string, name: string): void {
@@ -348,7 +346,10 @@ export class GroupManager {
       if (!existing.has(id)) { delete this.settings.groupNames[id]; changed = true; }
     }
 
-    if (changed) this.saveCallback();
+    if (changed) {
+      this._effectiveCache = null;
+      this.saveCallback();
+    }
     return changed;
   }
 }

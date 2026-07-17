@@ -1,21 +1,18 @@
 import { extension_settings } from 'sillytavern/extensions';
-import { eventSource, event_types, saveSettingsDebounced, getRequestHeaders } from 'sillytavern/script';
+import { eventSource, event_types, saveSettingsDebounced } from 'sillytavern/script';
 import { power_user } from 'sillytavern/power-user';
 import { POPUP_TYPE, Popup } from 'sillytavern/popup';
 import { GroupManager } from './manager';
-import type { GroupSettings } from './manager';
 
 // ==================== 常量 ====================
 
 const SETTINGS_KEY = 'collapsible_personas_v3';
-const LOG_PREFIX = '[CP-V3]';
+const LOG_PREFIX = '[PersonaCollapse]';
 
 // ==================== 状态 ====================
 
 let manager: GroupManager;
 let setUserAvatarFn: ((id: string) => Promise<void>) | null = null;
-let initPersonaFn: ((avatarId: string, name: string, desc: string, title: string) => Promise<void>) | null = null;
-let getUserAvatarsFn: ((force?: boolean, navigateTo?: string) => Promise<string[]>) | null = null;
 /** personas.js 模块引用，通过 live binding 直接读 user_avatar */
 let personasModule: { user_avatar?: string; [k: string]: any } | null = null;
 
@@ -26,8 +23,6 @@ async function loadPersonasApi(): Promise<void> {
   try {
     personasModule = await import(/* webpackIgnore: true */ '/scripts/personas.js' as any);
     setUserAvatarFn = personasModule!.setUserAvatar;
-    initPersonaFn = personasModule!.initPersona ?? null;
-    getUserAvatarsFn = personasModule!.getUserAvatars ?? null;
   } catch (e) {
     console.warn(LOG_PREFIX, '无法加载 personas.js:', e);
   }
@@ -81,23 +76,21 @@ async function switchToPersona(id: string): Promise<void> {
     [...document.querySelectorAll('#user_avatar_block .avatar-container')].find(c => getAvatarId(c) === id);
   if (el) {
     el.classList.remove('cp2-hidden-branch');
-    (window as any).jQuery ? (window as any).jQuery(el).trigger('click') : (el as HTMLElement).click();
+    if ((window as any).jQuery) {
+      (window as any).jQuery(el).trigger('click');
+    } else {
+      (el as HTMLElement).click();
+    }
   }
 }
 
-/** 获取当前所有独立人设 id（不属于任何分组的组长或成员） */
-function getIndependentPersonaIds(): string[] {
-  const settings = manager.getSettings();
-  const parentIds = new Set(Object.keys(settings.manualGroups));
-  const childIds = new Set(Object.values(settings.manualGroups).flat());
-  return Object.keys(power_user.personas || {}).filter(id => !parentIds.has(id) && !childIds.has(id));
-}
 
 // ==================== 渲染：头像列表 ====================
 
 let isRendering = false;
 let renderTimer: ReturnType<typeof setTimeout> | null = null;
 let branchStyleEl: HTMLStyleElement | null = null;
+let lastBranchChildIds: string | null = null;
 
 /**
  * 将分支成员的隐藏规则写入 <style> 标签。
@@ -118,6 +111,10 @@ function updateBranchHideCSS(): void {
 
   const effectiveGroups = manager.getEffectiveGroups();
   const childIds = Object.values(effectiveGroups).flat();
+  const key = childIds.join(',');
+  if (key === lastBranchChildIds) return;
+  lastBranchChildIds = key;
+
   branchStyleEl.textContent = childIds
     .map(id => `#user_avatar_block .avatar-container[data-avatar-id="${CSS.escape(id)}"] { display: none !important; }`)
     .join('\n');
@@ -278,7 +275,11 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
     panel = document.createElement('div');
     panel.id = 'cp2-variants-panel';
     const controls = document.getElementById('persona_controls');
-    controls ? area.insertBefore(panel, controls.nextSibling) : area.appendChild(panel);
+    if (controls) {
+      area.insertBefore(panel, controls.nextSibling);
+    } else {
+      area.appendChild(panel);
+    }
   }
 
   const settings = manager?.getSettings();
@@ -291,9 +292,6 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
   const effectiveGroups = manager.getEffectiveGroups();
   const parentId = manager.findParentOf(currentId) || currentId;
   const children = effectiveGroups[parentId];
-  const isParent = !!effectiveGroups[currentId];
-  const isChild = manager.findParentOf(currentId) !== null;
-  const isIndependent = manager.isIndependent(currentId);
 
   // 独立人设：隐藏马甲面板
 
@@ -324,7 +322,6 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
   panel.style.display = 'block';
 
   const allMembers = [parentId, ...(effectiveGroups[parentId] || [])];
-  const groupDisplayName = manager.getGroupName(parentId, getPersonaName(parentId));
 
   // 构建 header
   const headerHTML = `
@@ -380,7 +377,7 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
         e.preventDefault();
         item.style.borderTop = '2px solid var(--SmartThemeQuoteColor)';
       });
-      item.addEventListener('dragleave', e => {
+      item.addEventListener('dragleave', () => {
         item.style.borderTop = '';
       });
       item.addEventListener('drop', e => {
@@ -492,7 +489,12 @@ function openGroupManager(initialParentId: string): void {
   function renderPanes() {
     const effectiveGroups = manager.getEffectiveGroups();
     const children = effectiveGroups[currentParentId] || [];
-    let availableIds = allIds.filter(id => id !== currentParentId && manager.isIndependent(id));
+    const groupedIds = new Set<string>();
+    for (const [pid, cids] of Object.entries(effectiveGroups)) {
+      groupedIds.add(pid);
+      for (const c of cids) groupedIds.add(c);
+    }
+    let availableIds = allIds.filter(id => id !== currentParentId && !groupedIds.has(id));
 
     const currentParentName = getPersonaName(currentParentId);
     const parentBaseName = currentParentName.match(/^(.+?)\s*[-_]\s*.+$/)?.[1].trim() || currentParentName.trim();
@@ -757,6 +759,7 @@ function setupContextMenu(): void {
 // ==================== 拖拽：桌面鼠标 ====================
 
 let draggingId: string | null = null;
+let lastDropTime = 0;
 
 function setupMouseDrag(): void {
   const block = document.getElementById('user_avatar_block');
@@ -805,6 +808,8 @@ function setupMouseDrag(): void {
       container.classList.remove('cp2-drag-target');
       const targetId = getAvatarId(container);
       if (targetId && targetId !== draggingId) {
+        if (Date.now() - lastDropTime < 300) { draggingId = null; return; }
+        lastDropTime = Date.now();
         const finalParentId = manager.findParentOf(targetId) || targetId;
         manager.linkChild(finalParentId, draggingId);
         toastr.success(`已将【${getPersonaName(draggingId)}】纳入【${getPersonaName(finalParentId)}】的分支`);
@@ -902,6 +907,14 @@ function setupTouchDrag(): void {
       const targetId = container ? getAvatarId(container) : null;
 
       if (targetId && targetId !== touchDragId) {
+        if (Date.now() - lastDropTime < 300) {
+          touchDragEl?.classList.remove('cp2-dragging');
+          lastTouchTarget?.classList.remove('cp2-drag-target');
+          touchDragging = false;
+          touchDragId = null;
+          return;
+        }
+        lastDropTime = Date.now();
         const finalParentId = manager.findParentOf(targetId) || targetId;
         manager.linkChild(finalParentId, touchDragId);
         toastr.success(`已将【${getPersonaName(touchDragId)}】纳入【${getPersonaName(finalParentId)}】的分支`);
@@ -1008,7 +1021,7 @@ function initExtensionSettings(): void {
   wrapper.innerHTML = `
     <div class="inline-drawer">
       <div class="inline-drawer-toggle inline-drawer-header">
-        <b>人设折叠 V3</b>
+        <b>人设折叠</b>
         <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
       </div>
       <div class="inline-drawer-content">
@@ -1067,8 +1080,7 @@ function initExtensionSettings(): void {
   wrapper.querySelector('#cp2-btn-manage-global')?.addEventListener('click', () => {
     // 寻找当前选中的角色，如果没有，随便找一个 parentId，或者干脆空串
     const selectedEl = document.querySelector('#user_avatar_block .avatar-container.selected');
-    // @ts-ignore
-    let currentId = (selectedEl ? getAvatarId(selectedEl) : null) ?? (typeof personas !== 'undefined' ? personas?.user_avatar : null);
+    let currentId = (selectedEl ? getAvatarId(selectedEl) : null) ?? personasModule?.user_avatar ?? null;
     
     if (!currentId) {
       // 找不到则随便取一个有效ID作为主卡上下文

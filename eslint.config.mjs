@@ -56,7 +56,7 @@ export default [
       'import-x/no-cycle': 'error',
       'import-x/no-dynamic-require': 'warn',
       'import-x/no-nodejs-modules': 'warn',
-      'import-x/no-unresolved': [2, { ignore: ['^http'] }],
+      'import-x/no-unresolved': [2, { ignore: ['^http', '^sillytavern/'] }],
       'no-dupe-class-members': 'off',
       'no-empty-function': 'off',
       'no-floating-decimal': 'error',
@@ -77,5 +77,13 @@ export default [
     },
   },
   eslintConfigPrettier,
-  globalIgnores(['dist/**', 'node_modules/**', 'eslint.config.mjs', 'postcss.config.js', 'webpack.config.ts']),
+  globalIgnores([
+    '_GITHUB_UPLOAD_/**',
+    'dist/**',
+    'node_modules/**',
+    'releases/**',
+    'eslint.config.mjs',
+    'postcss.config.js',
+    'webpack.config.ts',
+  ]),
 ];
