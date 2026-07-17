@@ -38,8 +38,10 @@ declare module 'sillytavern/extensions' {
 }
 
 declare module 'sillytavern/script' {
+  export const default_user_avatar: string;
   export const eventSource: any;
   export const event_types: Record<string, string>;
+  export function getRequestHeaders(options?: Record<string, unknown>): Record<string, string>;
   export function saveSettingsDebounced(): void;
 }
 

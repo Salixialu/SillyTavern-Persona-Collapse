@@ -143,6 +143,44 @@
   align-items: center;
   gap: 6px;
 }
+.cp2-variants-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+.cp2-group-title-input {
+  min-width: 0;
+  max-width: 180px;
+  height: 26px;
+  padding: 2px 6px;
+  margin: 0;
+  font-size: 0.9em;
+}
+.cp2-icon-btn {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+  border: 1px solid var(--SmartThemeBorderColor);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--SmartThemeBodyColor);
+  cursor: pointer;
+  opacity: 0.65;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.cp2-icon-btn:hover {
+  opacity: 1;
+  color: var(--SmartThemeQuoteColor);
+  border-color: var(--SmartThemeQuoteColor);
+  background: rgba(255,255,255,0.05);
+}
 .cp2-variants-header-actions {
   display: flex;
   align-items: center;
@@ -265,6 +303,10 @@ body.square-avatars .cp2-variant-avatar {
   opacity: 1;
   color: var(--SmartThemeQuoteColor);
   background: rgba(255,255,255,0.1);
+}
+.cp2-action-pending {
+  pointer-events: none;
+  opacity: 0.35 !important;
 }
 .cp2-variant-parent-badge {
   font-size: 0.7em;

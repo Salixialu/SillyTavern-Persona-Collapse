@@ -1,5 +1,5 @@
 import { extension_settings } from 'sillytavern/extensions';
-import { eventSource, event_types, saveSettingsDebounced } from 'sillytavern/script';
+import { default_user_avatar, eventSource, event_types, getRequestHeaders, saveSettingsDebounced } from 'sillytavern/script';
 import { power_user } from 'sillytavern/power-user';
 import { POPUP_TYPE, Popup } from 'sillytavern/popup';
 import { GroupManager } from './manager';
@@ -14,7 +14,19 @@ const LOG_PREFIX = '[PersonaCollapse]';
 let manager: GroupManager;
 let setUserAvatarFn: ((id: string) => Promise<void>) | null = null;
 /** personas.js 模块引用，通过 live binding 直接读 user_avatar */
-let personasModule: { user_avatar?: string; [k: string]: any } | null = null;
+let personasModule: {
+  getUserAvatars?: (doRender?: boolean, openPageAt?: string) => Promise<string[]>;
+  initPersona?: (
+    avatarId: string,
+    personaName: string,
+    personaDescription: string,
+    personaTitle: string,
+    options?: Record<string, unknown>,
+  ) => Promise<void>;
+  setUserAvatar?: (id: string) => Promise<void>;
+  user_avatar?: string;
+  [k: string]: any;
+} | null = null;
 
 // ==================== ST API 懒加载 ====================
 
@@ -22,7 +34,7 @@ async function loadPersonasApi(): Promise<void> {
   if (personasModule) return;
   try {
     personasModule = await import(/* webpackIgnore: true */ '/scripts/personas.js' as any);
-    setUserAvatarFn = personasModule!.setUserAvatar;
+    setUserAvatarFn = personasModule!.setUserAvatar ?? null;
   } catch (e) {
     console.warn(LOG_PREFIX, '无法加载 personas.js:', e);
   }
@@ -58,6 +70,122 @@ function getPersonaBindings(id: string): Array<{ type: string; id: string }> {
 /** 获取头像缩略图 URL */
 function getThumbUrl(id: string): string {
   return '/thumbnail?type=persona&file=' + encodeURIComponent(id);
+}
+
+function getDefaultGroupTitle(): string {
+  return '人设分支';
+}
+
+function getDisplayGroupTitle(parentId: string): string {
+  return manager.getGroupName(parentId, getDefaultGroupTitle());
+}
+
+function buildCopyName(sourceName: string): string {
+  const base = `${sourceName}_副本`;
+  const existingNames = new Set(Object.values(power_user.personas || {}));
+  if (!existingNames.has(base)) return base;
+
+  let index = 2;
+  while (existingNames.has(`${base}${index}`)) index++;
+  return `${base}${index}`;
+}
+
+function buildAvatarId(personaName: string): string {
+  const safeName = personaName.replace(/[^a-zA-Z0-9]/g, '') || 'persona';
+  let avatarId = `${Date.now()}-${safeName}.png`;
+  let index = 2;
+  while (power_user.personas?.[avatarId]) {
+    avatarId = `${Date.now()}-${safeName}-${index}.png`;
+    index++;
+  }
+  return avatarId;
+}
+
+async function uploadPersonaAvatar(sourceUrl: string, avatarId: string): Promise<void> {
+  const fetchResult = await fetch(sourceUrl);
+  if (!fetchResult.ok) {
+    throw new Error(`Failed to fetch avatar: ${fetchResult.statusText}`);
+  }
+
+  const blob = await fetchResult.blob();
+  const file = new File([blob], 'avatar.png', { type: blob.type || 'image/png' });
+  const formData = new FormData();
+  formData.append('avatar', file);
+  formData.append('overwrite_name', avatarId);
+
+  const response = await fetch('/api/avatars/upload', {
+    method: 'POST',
+    headers: getRequestHeaders({ omitContentType: true }),
+    cache: 'no-cache',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to upload avatar: ${response.statusText}`);
+  }
+}
+
+async function createPersonaRecord(
+  avatarId: string,
+  sourceId: string,
+  newName: string,
+): Promise<void> {
+  await loadPersonasApi();
+
+  const source = (power_user.persona_descriptions || {})[sourceId] || {};
+  const description = typeof source.description === 'string' ? source.description : '';
+  const title = typeof source.title === 'string' ? source.title : '';
+  const options = {
+    depth: source.depth,
+    lorebook: source.lorebook,
+    position: source.position,
+    role: source.role,
+    silent: false,
+  };
+
+  if (personasModule?.initPersona) {
+    await personasModule.initPersona(avatarId, newName, description, title, options);
+  } else {
+    power_user.personas[avatarId] = newName;
+    power_user.persona_descriptions[avatarId] = {
+      description,
+      depth: source.depth,
+      lorebook: source.lorebook || '',
+      position: source.position,
+      role: source.role,
+      title,
+    };
+    saveSettingsDebounced();
+    await eventSource.emit(event_types.PERSONA_CREATED, { avatarId, name: newName, description, title });
+  }
+}
+
+async function duplicatePersonaIntoGroup(parentId: string, sourceId: string): Promise<void> {
+  const sourceName = getPersonaName(sourceId);
+  const newName = buildCopyName(sourceName);
+  const avatarId = buildAvatarId(newName);
+  let usedFallbackAvatar = false;
+
+  try {
+    await uploadPersonaAvatar(getThumbUrl(sourceId), avatarId);
+  } catch (e) {
+    console.warn(LOG_PREFIX, '复制头像失败，改用默认头像:', e);
+    usedFallbackAvatar = true;
+    try {
+      await uploadPersonaAvatar(default_user_avatar, avatarId);
+    } catch (fallbackError) {
+      console.warn(LOG_PREFIX, '默认头像上传失败，将仅创建人设记录:', fallbackError);
+    }
+  }
+
+  await createPersonaRecord(avatarId, sourceId, newName);
+  manager.linkChildAfter(parentId, avatarId, sourceId);
+  await personasModule?.getUserAvatars?.(true, parentId);
+  renderAvatarBlock();
+  renderVariantsPanel(true);
+
+  const suffix = usedFallbackAvatar ? '，头像使用默认头像' : '';
+  toastr.success(`已复制为【${newName}】并加入人设分支${suffix}`);
 }
 
 /** 切换到指定人设 */
@@ -258,6 +386,7 @@ function renderAvatarBlock(): void {
 
 let lastPanelPersonaId: string | null = null;
 let lastPanelGroupKey: string | null = null;
+let editingGroupNameParentId: string | null = null;
 
 function renderVariantsPanel(force = false, currentIdOverride: string | null = null): void {
   const selectedEl = document.querySelector('#user_avatar_block .avatar-container.selected');
@@ -316,17 +445,28 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
     return;
   }
 
-  const groupKey = `${parentId}:${children.join(',')}`;
+  const groupTitle = getDisplayGroupTitle(parentId);
+  const groupKey = `${parentId}:${groupTitle}:${children.join(',')}`;
   if (!force && currentId === lastPanelPersonaId && groupKey === lastPanelGroupKey) return;
 
   panel.style.display = 'block';
 
   const allMembers = [parentId, ...(effectiveGroups[parentId] || [])];
+  const isEditingTitle = editingGroupNameParentId === parentId;
 
   // 构建 header
   const headerHTML = `
     <div class="cp2-variants-header">
-      <span class="cp2-variants-header-title">🎭 马甲分支 (${allMembers.length})</span>
+      <div class="cp2-variants-title-wrap">
+        ${isEditingTitle ? `
+          <input class="text_pole cp2-group-title-input" id="cp2-group-title-input" value="${escapeHtml(groupTitle === getDefaultGroupTitle() ? '' : groupTitle)}" placeholder="${getDefaultGroupTitle()}">
+          <button class="cp2-icon-btn" id="cp2-save-group-title" title="保存标题"><i class="fa-solid fa-check"></i></button>
+          <button class="cp2-icon-btn" id="cp2-cancel-group-title" title="取消"><i class="fa-solid fa-xmark"></i></button>
+        ` : `
+          <span class="cp2-variants-header-title">🎭 ${escapeHtml(groupTitle)} (${allMembers.length})</span>
+          <button class="cp2-icon-btn" id="cp2-edit-group-title" title="重命名人设分支"><i class="fa-solid fa-pencil"></i></button>
+        `}
+      </div>
       <div class="cp2-variants-header-actions">
         <button class="cp2-variants-add-btn" id="cp2-add-branch-btn" title="批量管理此分支" style="border-radius: 4px; padding: 2px 8px;">
           <i class="fa-solid fa-users-gear"></i> 管理
@@ -342,6 +482,42 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
     e.stopPropagation();
     openGroupManager(parentId);
   });
+
+  panel.querySelector('#cp2-edit-group-title')?.addEventListener('click', e => {
+    e.stopPropagation();
+    editingGroupNameParentId = parentId;
+    renderVariantsPanel(true);
+  });
+
+  const titleInput = panel.querySelector<HTMLInputElement>('#cp2-group-title-input');
+  const saveTitle = () => {
+    manager.setGroupName(parentId, titleInput?.value || '');
+    editingGroupNameParentId = null;
+    renderVariantsPanel(true);
+  };
+  const cancelTitle = () => {
+    editingGroupNameParentId = null;
+    renderVariantsPanel(true);
+  };
+  panel.querySelector('#cp2-save-group-title')?.addEventListener('click', e => {
+    e.stopPropagation();
+    saveTitle();
+  });
+  panel.querySelector('#cp2-cancel-group-title')?.addEventListener('click', e => {
+    e.stopPropagation();
+    cancelTitle();
+  });
+  titleInput?.addEventListener('click', e => e.stopPropagation());
+  titleInput?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      saveTitle();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      cancelTitle();
+    }
+  });
+  titleInput?.focus();
 
   // 渲染成员列表
   const list = panel.querySelector('.cp2-variants-list')!;
@@ -438,6 +614,23 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
       }
       actions.appendChild(bindingWrap);
     }
+
+    const copyBtn = document.createElement('i');
+    copyBtn.className = 'fa-solid fa-copy cp2-variant-action-btn';
+    copyBtn.title = '复制此人设并加入当前分支';
+    copyBtn.onclick = async evt => {
+      evt.stopPropagation();
+      copyBtn.classList.add('cp2-action-pending');
+      try {
+        await duplicatePersonaIntoGroup(parentId, memberId);
+      } catch (e) {
+        console.error(LOG_PREFIX, '复制人设失败:', e);
+        toastr.error(`复制【${name}】失败，请稍后重试`);
+      } finally {
+        copyBtn.classList.remove('cp2-action-pending');
+      }
+    };
+    actions.appendChild(copyBtn);
 
     if (isMainCard) {
       const badge = document.createElement('span');

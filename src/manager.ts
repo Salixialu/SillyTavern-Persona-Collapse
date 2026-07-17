@@ -155,6 +155,32 @@ export class GroupManager {
     this.saveCallback();
   }
 
+  /** 将 childId 加入 parentId，并插入到 targetId 后面；targetId 为 parentId 时放到首位 */
+  linkChildAfter(parentId: string, childId: string, targetId: string): void {
+    if (parentId === childId) return;
+    this.linkChild(parentId, childId);
+
+    const children = this.settings.manualGroups[parentId];
+    if (!children) return;
+
+    const oldIdx = children.indexOf(childId);
+    if (oldIdx !== -1) children.splice(oldIdx, 1);
+
+    if (targetId === parentId) {
+      children.unshift(childId);
+    } else {
+      const targetIdx = children.indexOf(targetId);
+      if (targetIdx === -1) {
+        children.push(childId);
+      } else {
+        children.splice(targetIdx + 1, 0, childId);
+      }
+    }
+
+    this._effectiveCache = null;
+    this.saveCallback();
+  }
+
   /** 将 childId 从所有分支中移除 */
   unlinkChild(childId: string): void {
     let changed = false;
@@ -273,7 +299,6 @@ export class GroupManager {
 
   /** 设置分组名称 */
   setGroupName(parentId: string, name: string): void {
-    if (!this.settings.manualGroups[parentId]) return;
     const trimmed = name.trim();
     if (trimmed === '') {
       delete this.settings.groupNames[parentId];
