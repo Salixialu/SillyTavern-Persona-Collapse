@@ -20,6 +20,15 @@ const HOVER_EXPAND_DELAY_MS = 500;
 
 type BranchMoveEventHandler = (event: Sortable.MoveEvent, originalEvent: Event) => boolean | -1 | 1 | void;
 
+interface BranchDomSnapshot {
+  root: HTMLElement;
+  rootChildren: Element[];
+  subgroupChildren: Array<{
+    container: HTMLElement;
+    children: Element[];
+  }>;
+}
+
 function isHTMLElement(value: Element | null | undefined): value is HTMLElement {
   return value instanceof HTMLElement;
 }
@@ -30,15 +39,46 @@ function getDirectChildren(parent: HTMLElement, selector: string): HTMLElement[]
   );
 }
 
-function getFirstRootPersona(root: HTMLElement): HTMLElement | null {
-  for (const item of getDirectChildren(root, ROOT_ITEM_SELECTOR)) {
-    if (item.dataset.layoutType === 'persona') return item;
-  }
-  return null;
-}
-
 function getRootSubgroupItems(root: HTMLElement): HTMLElement[] {
   return Array.from(root.querySelectorAll<HTMLElement>(SUBGROUP_ITEMS_SELECTOR));
+}
+
+function captureBranchDomSnapshot(root: HTMLElement): BranchDomSnapshot {
+  return {
+    root,
+    rootChildren: Array.from(root.children),
+    subgroupChildren: getRootSubgroupItems(root).map(container => ({
+      container,
+      children: Array.from(container.children),
+    })),
+  };
+}
+
+function restoreBranchDomSnapshot(snapshot: BranchDomSnapshot): void {
+  snapshot.root.replaceChildren(...snapshot.rootChildren);
+  for (const { container, children } of snapshot.subgroupChildren) {
+    container.replaceChildren(...children);
+  }
+}
+
+function wouldMakeRootStartWithSubgroup(
+  root: HTMLElement,
+  event: Sortable.MoveEvent,
+  dragged: HTMLElement,
+): boolean {
+  if (event.to !== root) return false;
+
+  const rootItems = getDirectChildren(root, ROOT_ITEM_SELECTOR).filter(item => item !== dragged);
+  const related = isHTMLElement(event.related) && event.related.matches(ROOT_ITEM_SELECTOR)
+    ? event.related
+    : null;
+  const relatedIndex = related ? rootItems.indexOf(related) : -1;
+  const insertIndex = relatedIndex === -1
+    ? rootItems.length
+    : relatedIndex + (event.willInsertAfter === true ? 1 : 0);
+
+  rootItems.splice(insertIndex, 0, dragged);
+  return rootItems[0]?.dataset.layoutType === 'subgroup';
 }
 
 export function readBranchLayoutSnapshot(root: HTMLElement): BranchLayoutSnapshot {
@@ -82,6 +122,7 @@ export function mountBranchSortables(options: BranchSortableOptions): () => void
   let commitQueued = false;
   let hoverTimer: ReturnType<typeof setTimeout> | null = null;
   let hoverSection: HTMLElement | null = null;
+  let lastAcceptedDomSnapshot = captureBranchDomSnapshot(options.root);
   const reducedMotion = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 
   const clearHoverTimer = (): void => {
@@ -108,8 +149,11 @@ export function mountBranchSortables(options: BranchSortableOptions): () => void
       const snapshot = readBranchLayoutSnapshot(options.root);
       const accepted = options.onCommit(snapshot);
       if (!accepted) {
+        restoreBranchDomSnapshot(lastAcceptedDomSnapshot);
         options.root.dispatchEvent(new CustomEvent('cp2:layout-rejected', { detail: snapshot }));
+        return;
       }
+      lastAcceptedDomSnapshot = captureBranchDomSnapshot(options.root);
     });
   };
 
@@ -129,22 +173,17 @@ export function mountBranchSortables(options: BranchSortableOptions): () => void
     if (draggedType === 'subgroup' && event.to !== options.root) return false;
 
     if (draggedType === 'persona') {
-      const entryPersona = getFirstRootPersona(options.root);
-      if (entryPersona && dragged.dataset.personaId === entryPersona.dataset.personaId && event.to !== options.root) {
-        return false;
-      }
-    }
-
-    if (draggedType === 'subgroup' && event.to === options.root) {
-      const firstRootItem = getDirectChildren(options.root, ROOT_ITEM_SELECTOR)[0] ?? null;
+      const entryPersona = getDirectChildren(options.root, ROOT_ITEM_SELECTOR)[0] ?? null;
       if (
-        firstRootItem
-        && event.related === firstRootItem
-        && event.willInsertAfter !== true
+        entryPersona?.dataset.layoutType === 'persona'
+        && dragged.dataset.personaId === entryPersona.dataset.personaId
+        && event.to !== options.root
       ) {
         return false;
       }
     }
+
+    if (wouldMakeRootStartWithSubgroup(options.root, event, dragged)) return false;
 
     return true;
   };
