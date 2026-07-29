@@ -483,7 +483,7 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
   const headerHTML = `
     <div class="cp2-variants-header">
       <div class="cp2-variants-title-wrap">
-        <span class="cp2-variants-header-title">🎭 ${escapeHtml(tUi('personaCollapse.branches', '人设分支'))} (${layout.root.length})</span>
+        <span class="cp2-variants-header-title">🎭 ${escapeHtml(tUi('personaCollapse.branches', '人设分支'))} (${children.length + 1})</span>
         <button class="cp2-icon-btn" id="cp2-create-subgroup" title="${escapeHtml(tUi('personaCollapse.createSubgroup', '新建分组'))}" aria-label="${escapeHtml(tUi('personaCollapse.createSubgroup', '新建分组'))}"><i class="fa-solid fa-folder-plus"></i></button>
       </div>
       <div class="cp2-variants-header-actions">
@@ -521,7 +521,7 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
     const isCurrentUser = memberId === currentId;
 
     const item = document.createElement('div');
-    item.className = `cp2-variant-item cp2-persona-sort-item cp2-root-item${isCurrentUser ? ' active' : ''}`;
+    item.className = `cp2-variant-item cp2-persona-sort-item${subgroupId ? '' : ' cp2-root-item'}${isCurrentUser ? ' active' : ''}`;
     item.dataset.personaId = memberId;
     item.dataset.layoutType = 'persona';
     if (subgroupId) item.dataset.subgroupId = subgroupId;
@@ -649,21 +649,6 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
     handle.title = '拖拽排序';
     header.appendChild(handle);
 
-    const titleWrap = document.createElement('div');
-    titleWrap.className = 'cp2-subgroup-title-wrap';
-
-    const name = document.createElement('span');
-    name.className = 'cp2-subgroup-name';
-    name.textContent = subgroup?.name || groupId;
-    name.title = subgroup?.name || groupId;
-    titleWrap.appendChild(name);
-
-    const count = document.createElement('span');
-    count.className = 'cp2-subgroup-count';
-    count.textContent = String(memberIds.length);
-    titleWrap.appendChild(count);
-    header.appendChild(titleWrap);
-
     const toggle = document.createElement('button');
     toggle.className = 'cp2-subgroup-toggle cp2-icon-btn';
     toggle.title = subgroup?.collapsed
@@ -679,7 +664,78 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
     });
     header.appendChild(toggle);
 
-    header.addEventListener('click', () => {
+    const titleWrap = document.createElement('div');
+    titleWrap.className = 'cp2-subgroup-title-wrap';
+    if (editingSubgroupId === groupId) {
+      const input = document.createElement('input');
+      input.className = 'text_pole cp2-subgroup-name-input';
+      input.value = subgroup?.name || '';
+      input.placeholder = tUi('personaCollapse.newSubgroup', '新分组');
+      let finished = false;
+      const finishEditing = (save: boolean): void => {
+        if (finished) return;
+        finished = true;
+        if (save) manager.renameSubgroup(parentId, groupId, input.value);
+        editingSubgroupId = null;
+        renderVariantsPanel(true, currentId);
+      };
+      input.addEventListener('click', event => event.stopPropagation());
+      input.addEventListener('keydown', event => {
+        if (event.key === 'Enter') finishEditing(true);
+        if (event.key === 'Escape') finishEditing(false);
+      });
+      input.addEventListener('blur', () => finishEditing(true), { once: true });
+      titleWrap.appendChild(input);
+      setTimeout(() => input.focus(), 0);
+    } else {
+      const name = document.createElement('span');
+      name.className = 'cp2-subgroup-name';
+      name.textContent = subgroup?.name || groupId;
+      name.title = subgroup?.name || groupId;
+      titleWrap.appendChild(name);
+
+      const count = document.createElement('span');
+      count.className = 'cp2-subgroup-count';
+      count.textContent = String(memberIds.length);
+      titleWrap.appendChild(count);
+    }
+    header.appendChild(titleWrap);
+
+    const edit = document.createElement('button');
+    edit.className = 'cp2-icon-btn';
+    edit.title = tUi('personaCollapse.renameSubgroup', '重命名分组');
+    edit.setAttribute('aria-label', edit.title);
+    edit.innerHTML = '<i class="fa-solid fa-pencil"></i>';
+    edit.addEventListener('click', event => {
+      event.stopPropagation();
+      editingSubgroupId = groupId;
+      renderVariantsPanel(true, currentId);
+    });
+    header.appendChild(edit);
+
+    const remove = document.createElement('button');
+    remove.className = 'cp2-icon-btn cp2-subgroup-delete';
+    remove.title = tUi('personaCollapse.deleteSubgroup', '删除分组');
+    remove.setAttribute('aria-label', remove.title);
+    remove.innerHTML = '<i class="fa-solid fa-trash"></i>';
+    remove.addEventListener('click', event => {
+      event.stopPropagation();
+      const groupName = subgroup?.name || groupId;
+      const message = tUi('personaCollapse.deleteSubgroupConfirm', `删除“${groupName}”分组？其中人设将移回未分组。`);
+      new Popup(`<p>${escapeHtml(message)}</p>`, POPUP_TYPE.CONFIRM, '', {
+        okButton: tUi('personaCollapse.delete', '删除'),
+        cancelButton: tUi('personaCollapse.cancel', '取消'),
+        onOk: () => {
+          manager.deleteSubgroup(parentId, groupId);
+          if (editingSubgroupId === groupId) editingSubgroupId = null;
+          renderVariantsPanel(true, currentId);
+        },
+      }).show();
+    });
+    header.appendChild(remove);
+
+    header.addEventListener('click', event => {
+      if ((event.target as Element).closest('button, input, .cp2-sort-handle')) return;
       manager.setSubgroupCollapsed(parentId, groupId, !(subgroup?.collapsed ?? false));
       renderVariantsPanel(true, currentId);
     });
@@ -713,9 +769,12 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
   destroyBranchSortables = mountBranchSortables({
     root: list,
     onCommit: snapshot => {
-      const accepted = manager.applyBranchLayoutSnapshot(parentId, snapshot, children);
-      if (!accepted) return false;
-      queueMicrotask(() => renderVariantsPanel(true, currentId));
+      const newEntryId = manager.applyBranchLayoutSnapshot(parentId, snapshot, children);
+      if (!newEntryId) return false;
+      queueMicrotask(() => {
+        renderAvatarBlock();
+        renderVariantsPanel(true, newEntryId);
+      });
       return true;
     },
     onExpandSubgroup: (subgroupId, section) => {

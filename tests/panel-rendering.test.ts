@@ -9,6 +9,9 @@ describe('persona branch panel rendering', () => {
     expect(panelSource).toContain('for (const item of layout.root)');
     expect(panelSource).toContain('mountBranchSortables({');
     expect(panelSource).toContain("tUi('personaCollapse.leftListEntry', '左侧列表入口')");
+    expect(panelSource).toContain("tUi('personaCollapse.renameSubgroup', '重命名分组')");
+    expect(panelSource).toContain("tUi('personaCollapse.deleteSubgroup', '删除分组')");
+    expect(panelSource).toContain("subgroupId ? '' : ' cp2-root-item'");
     expect(panelSource).not.toContain('cp2-subgroup-select');
     expect(panelSource).not.toContain("tUi('personaCollapse.removeFromSubgroup', '移出分组')");
   });
