@@ -246,3 +246,165 @@ describe('GroupManager legacy branch layout', () => {
     ]);
   });
 });
+
+describe('GroupManager applyBranchLayoutSnapshot', () => {
+  it('atomically migrates layout state to the new entry persona', () => {
+    const save = vi.fn();
+    const manager = new GroupManager(completeSettings({
+      manualGroups: { parent: ['a', 'b', 'c'] },
+      groupNames: { parent: 'Main Branch' },
+      collapsedParents: ['parent'],
+      subgroups: {
+        parent: [{ id: 'warm', name: '温柔线', personaIds: ['b'], collapsed: false }],
+      },
+      ungroupedCollapsed: ['parent'],
+      branchLayouts: {
+        parent: [
+          { type: 'persona', id: 'parent' },
+          { type: 'persona', id: 'a' },
+          { type: 'persona', id: 'c' },
+          { type: 'subgroup', id: 'warm' },
+        ],
+      },
+    }), save);
+
+    const newEntry = manager.applyBranchLayoutSnapshot('parent', {
+      root: [
+        { type: 'persona', id: 'b' },
+        { type: 'subgroup', id: 'warm' },
+        { type: 'persona', id: 'parent' },
+      ],
+      subgroupMembers: { warm: ['a', 'c'] },
+    }, ['a', 'b', 'c']);
+
+    expect(newEntry).toBe('b');
+    expect(manager.getSettings().manualGroups).toEqual({ b: ['a', 'c', 'parent'] });
+    expect(manager.getSettings().groupNames).toEqual({ b: 'Main Branch' });
+    expect(manager.getSettings().collapsedParents).toEqual(['b']);
+    expect(manager.getSettings().ungroupedCollapsed).toEqual(['b']);
+    expect(manager.getSettings().subgroups.b).toEqual([
+      { id: 'warm', name: '温柔线', personaIds: ['a', 'c'], collapsed: false },
+    ]);
+    expect(manager.getSettings().branchLayouts.b).toEqual([
+      { type: 'persona', id: 'b' },
+      { type: 'subgroup', id: 'warm' },
+      { type: 'persona', id: 'parent' },
+    ]);
+    expect(manager.getSettings().manualGroups.parent).toBeUndefined();
+    expect(manager.getSettings().groupNames.parent).toBeUndefined();
+    expect(manager.getSettings().subgroups.parent).toBeUndefined();
+    expect(manager.getSettings().branchLayouts.parent).toBeUndefined();
+    expect(save).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    {
+      name: 'starts with a subgroup',
+      snapshot: {
+        root: [
+          { type: 'subgroup' as const, id: 'warm' },
+          { type: 'persona' as const, id: 'parent' },
+          { type: 'persona' as const, id: 'b' },
+        ],
+        subgroupMembers: { warm: ['a', 'c'] },
+      },
+    },
+    {
+      name: 'duplicates a persona in root',
+      snapshot: {
+        root: [
+          { type: 'persona' as const, id: 'parent' },
+          { type: 'persona' as const, id: 'b' },
+          { type: 'persona' as const, id: 'b' },
+          { type: 'subgroup' as const, id: 'warm' },
+        ],
+        subgroupMembers: { warm: ['a', 'c'] },
+      },
+    },
+    {
+      name: 'misses a persona from root and subgroup members',
+      snapshot: {
+        root: [
+          { type: 'persona' as const, id: 'parent' },
+          { type: 'subgroup' as const, id: 'warm' },
+        ],
+        subgroupMembers: { warm: ['a'] },
+      },
+    },
+    {
+      name: 'references an unknown subgroup',
+      snapshot: {
+        root: [
+          { type: 'persona' as const, id: 'parent' },
+          { type: 'subgroup' as const, id: 'cool' },
+          { type: 'persona' as const, id: 'b' },
+        ],
+        subgroupMembers: { cool: ['a', 'c'] },
+      },
+    },
+  ])('returns null and leaves settings untouched when snapshot $name', ({ snapshot }) => {
+    const initial = completeSettings({
+      manualGroups: { parent: ['a', 'b', 'c'] },
+      groupNames: { parent: 'Main Branch' },
+      collapsedParents: ['parent'],
+      subgroups: {
+        parent: [{ id: 'warm', name: '温柔线', personaIds: ['b'], collapsed: false }],
+      },
+      ungroupedCollapsed: ['parent'],
+      branchLayouts: {
+        parent: [
+          { type: 'persona', id: 'parent' },
+          { type: 'persona', id: 'a' },
+          { type: 'persona', id: 'c' },
+          { type: 'subgroup', id: 'warm' },
+        ],
+      },
+    });
+    const expected = JSON.parse(JSON.stringify(initial));
+    const save = vi.fn();
+    const manager = new GroupManager(initial, save);
+
+    expect(manager.applyBranchLayoutSnapshot('parent', snapshot, ['a', 'b', 'c'])).toBeNull();
+    expect(manager.getSettings()).toEqual(expected);
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it('updates in place when the parent stays the same', () => {
+    const save = vi.fn();
+    const manager = new GroupManager(completeSettings({
+      manualGroups: { parent: ['a', 'b', 'c'] },
+      subgroups: {
+        parent: [{ id: 'warm', name: '温柔线', personaIds: ['b'], collapsed: false }],
+      },
+      branchLayouts: {
+        parent: [
+          { type: 'persona', id: 'parent' },
+          { type: 'persona', id: 'a' },
+          { type: 'persona', id: 'c' },
+          { type: 'subgroup', id: 'warm' },
+        ],
+      },
+    }), save);
+
+    const newEntry = manager.applyBranchLayoutSnapshot('parent', {
+      root: [
+        { type: 'persona', id: 'parent' },
+        { type: 'subgroup', id: 'warm' },
+        { type: 'persona', id: 'c' },
+      ],
+      subgroupMembers: { warm: ['a', 'b'] },
+    }, ['a', 'b', 'c']);
+
+    expect(newEntry).toBe('parent');
+    expect(manager.getSettings().manualGroups).toEqual({ parent: ['a', 'b', 'c'] });
+    expect(manager.getSettings().subgroups.parent).toEqual([
+      { id: 'warm', name: '温柔线', personaIds: ['a', 'b'], collapsed: false },
+    ]);
+    expect(manager.getSettings().branchLayouts.parent).toEqual([
+      { type: 'persona', id: 'parent' },
+      { type: 'subgroup', id: 'warm' },
+      { type: 'persona', id: 'c' },
+    ]);
+    expect(save).toHaveBeenCalledOnce();
+  });
+});

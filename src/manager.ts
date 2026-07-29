@@ -162,6 +162,109 @@ export class GroupManager {
     };
   }
 
+  applyBranchLayoutSnapshot(
+    parentId: string,
+    snapshot: BranchLayoutSnapshot,
+    effectiveChildren: string[],
+  ): string | null {
+    const validPersonaIds = new Set([parentId, ...effectiveChildren]);
+    const currentSubgroups = this.settings.subgroups[parentId] || [];
+    const subgroupById = new Map(currentSubgroups.map(group => [group.id, group]));
+    const validSubgroupIds = new Set(currentSubgroups.map(group => group.id));
+    const nextRoot = snapshot.root.map(item => ({ ...item }));
+
+    if (nextRoot.length === 0 || nextRoot[0].type !== 'persona' || !validPersonaIds.has(nextRoot[0].id)) {
+      return null;
+    }
+
+    const seenRootPersonas = new Set<string>();
+    const seenRootSubgroups = new Set<string>();
+    for (const item of nextRoot) {
+      if (item.type === 'persona') {
+        if (!validPersonaIds.has(item.id) || seenRootPersonas.has(item.id)) return null;
+        seenRootPersonas.add(item.id);
+        continue;
+      }
+      if (!validSubgroupIds.has(item.id) || seenRootSubgroups.has(item.id)) return null;
+      seenRootSubgroups.add(item.id);
+    }
+
+    if (seenRootSubgroups.size !== validSubgroupIds.size) return null;
+    for (const subgroupId of Object.keys(snapshot.subgroupMembers)) {
+      if (!validSubgroupIds.has(subgroupId)) return null;
+    }
+
+    const assignedPersonas = new Set(seenRootPersonas);
+    const nextSubgroups: PersonaSubgroup[] = [];
+    for (const item of nextRoot) {
+      if (item.type !== 'subgroup') continue;
+      if (!(item.id in snapshot.subgroupMembers)) return null;
+      const members = snapshot.subgroupMembers[item.id];
+      const seenMembers = new Set<string>();
+      for (const memberId of members) {
+        if (!validPersonaIds.has(memberId) || seenMembers.has(memberId) || assignedPersonas.has(memberId)) {
+          return null;
+        }
+        seenMembers.add(memberId);
+        assignedPersonas.add(memberId);
+      }
+      nextSubgroups.push({
+        ...subgroupById.get(item.id)!,
+        personaIds: [...members],
+      });
+    }
+
+    if (assignedPersonas.size !== validPersonaIds.size) return null;
+    if (nextSubgroups.length !== currentSubgroups.length) return null;
+
+    const newEntry = nextRoot[0].id;
+    const nextManualChildren: string[] = [];
+    for (const item of nextRoot) {
+      if (item.type === 'persona') {
+        if (item.id !== newEntry) nextManualChildren.push(item.id);
+        continue;
+      }
+      nextManualChildren.push(...snapshot.subgroupMembers[item.id]);
+    }
+
+    const nextManualGroups = { ...this.settings.manualGroups, [newEntry]: nextManualChildren };
+    const nextBranchLayouts = { ...this.settings.branchLayouts, [newEntry]: nextRoot.map(item => ({ ...item })) };
+    const nextSubgroupMap = {
+      ...this.settings.subgroups,
+      [newEntry]: nextSubgroups.map(group => ({ ...group, personaIds: [...group.personaIds] })),
+    };
+    const nextGroupNames = { ...this.settings.groupNames };
+    if (parentId !== newEntry) {
+      delete nextManualGroups[parentId];
+      delete nextBranchLayouts[parentId];
+      delete nextSubgroupMap[parentId];
+      if (Object.prototype.hasOwnProperty.call(nextGroupNames, parentId)) {
+        nextGroupNames[newEntry] = nextGroupNames[parentId];
+        delete nextGroupNames[parentId];
+      }
+    }
+
+    const wasCollapsed = this.settings.collapsedParents.includes(parentId);
+    const nextCollapsedParents = this.settings.collapsedParents.filter(id => id !== parentId && id !== newEntry);
+    if (wasCollapsed) nextCollapsedParents.push(newEntry);
+
+    const wasUngroupedCollapsed = this.settings.ungroupedCollapsed.includes(parentId);
+    const nextUngroupedCollapsed = this.settings.ungroupedCollapsed.filter(
+      id => id !== parentId && id !== newEntry,
+    );
+    if (wasUngroupedCollapsed) nextUngroupedCollapsed.push(newEntry);
+
+    this.settings.manualGroups = nextManualGroups;
+    this.settings.groupNames = nextGroupNames;
+    this.settings.subgroups = nextSubgroupMap;
+    this.settings.branchLayouts = nextBranchLayouts;
+    this.settings.collapsedParents = nextCollapsedParents;
+    this.settings.ungroupedCollapsed = nextUngroupedCollapsed;
+    this._effectiveCache = null;
+    this.saveCallback();
+    return newEntry;
+  }
+
   private createSubgroupId(): string {
     const randomId = globalThis.crypto?.randomUUID?.()
       ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
