@@ -2,6 +2,7 @@ import { extension_settings } from 'sillytavern/extensions';
 import { default_user_avatar, eventSource, event_types, getRequestHeaders, saveSettingsDebounced } from 'sillytavern/script';
 import { power_user } from 'sillytavern/power-user';
 import { POPUP_TYPE, Popup } from 'sillytavern/popup';
+import { mountBranchSortables } from './branch-sortable';
 import { GroupManager } from './manager';
 
 // ==================== 常量 ====================
@@ -13,6 +14,8 @@ const LOG_PREFIX = '[PersonaCollapse]';
 
 let manager: GroupManager;
 let setUserAvatarFn: ((id: string) => Promise<void>) | null = null;
+let destroyBranchSortables: (() => void) | null = null;
+let branchSortableDragging = false;
 /** personas.js 模块引用，通过 live binding 直接读 user_avatar */
 let personasModule: {
   getUserAvatars?: (doRender?: boolean, openPageAt?: string) => Promise<string[]>;
@@ -38,6 +41,12 @@ async function loadPersonasApi(): Promise<void> {
   } catch (e) {
     console.warn(LOG_PREFIX, '无法加载 personas.js:', e);
   }
+}
+
+function teardownBranchSortables(): void {
+  destroyBranchSortables?.();
+  destroyBranchSortables = null;
+  branchSortableDragging = false;
 }
 
 
@@ -389,6 +398,7 @@ let lastPanelGroupKey: string | null = null;
 let editingSubgroupId: string | null = null;
 
 function renderVariantsPanel(force = false, currentIdOverride: string | null = null): void {
+  if (branchSortableDragging && !force) return;
   const selectedEl = document.querySelector('#user_avatar_block .avatar-container.selected');
   // 优先级： override > DOM .selected > ST 模块 user_avatar live binding
   // 后者确保分页切换后、分支成员在其他页时，500ms 轮询仍能就地读取当前人设
@@ -413,18 +423,22 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
 
   const settings = manager?.getSettings();
   if (!settings?.enabled || !currentId) {
+    teardownBranchSortables();
     panel.style.display = 'none';
+    lastPanelPersonaId = null;
+    lastPanelGroupKey = null;
     return;
   }
 
   // 找到该人设的分组上下文
   const effectiveGroups = manager.getEffectiveGroups();
   const parentId = manager.findParentOf(currentId) || currentId;
-  const children = effectiveGroups[parentId];
+  const children = effectiveGroups[parentId] || [];
 
   // 独立人设：隐藏马甲面板
 
-  if (!children || children.length === 0) {
+  if (children.length === 0) {
+    teardownBranchSortables();
     // 独立人设：只显示管理按钮，方便快速组建分支
     panel.style.display = 'block';
     panel.innerHTML = `
@@ -445,19 +459,31 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
     return;
   }
 
-  const sections = manager.getSubgroupSections(parentId, children);
-  const groupKey = `${parentId}:${children.join(',')}:${JSON.stringify(sections)}`;
+  const layout = manager.getBranchLayout(parentId, children);
+  const subgroupEntries = manager.getSettings().subgroups[parentId] || [];
+  const subgroupById = new Map(subgroupEntries.map(group => [group.id, group]));
+  const groupKey = JSON.stringify({
+    parentId,
+    currentId,
+    layout: layout.root,
+    members: layout.subgroupMembers,
+    subgroups: subgroupEntries.map(group => ({
+      id: group.id,
+      name: group.name,
+      collapsed: group.collapsed,
+      count: layout.subgroupMembers[group.id]?.length ?? 0,
+    })),
+  });
   if (!force && currentId === lastPanelPersonaId && groupKey === lastPanelGroupKey) return;
 
+  teardownBranchSortables();
   panel.style.display = 'block';
-
-  const allMembers = [parentId, ...(effectiveGroups[parentId] || [])];
 
   // 构建 header
   const headerHTML = `
     <div class="cp2-variants-header">
       <div class="cp2-variants-title-wrap">
-        <span class="cp2-variants-header-title">🎭 ${escapeHtml(tUi('personaCollapse.branches', '人设分支'))} (${allMembers.length})</span>
+        <span class="cp2-variants-header-title">🎭 ${escapeHtml(tUi('personaCollapse.branches', '人设分支'))} (${layout.root.length})</span>
         <button class="cp2-icon-btn" id="cp2-create-subgroup" title="${escapeHtml(tUi('personaCollapse.createSubgroup', '新建分组'))}" aria-label="${escapeHtml(tUi('personaCollapse.createSubgroup', '新建分组'))}"><i class="fa-solid fa-folder-plus"></i></button>
       </div>
       <div class="cp2-variants-header-actions">
@@ -484,11 +510,21 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
 
   // 渲染成员列表
   const list = panel.querySelector('.cp2-variants-list')!;
-  const createMemberItem = (memberId: string, isMainCard: boolean): HTMLElement => {
+  const createPersonaItem = (
+    memberId: string,
+    options: {
+      isEntry?: boolean;
+      subgroupId?: string | null;
+    } = {},
+  ): HTMLElement => {
+    const { isEntry = false, subgroupId = null } = options;
     const isCurrentUser = memberId === currentId;
 
     const item = document.createElement('div');
-    item.className = 'cp2-variant-item' + (isCurrentUser ? ' active' : '');
+    item.className = `cp2-variant-item cp2-persona-sort-item cp2-root-item${isCurrentUser ? ' active' : ''}`;
+    item.dataset.personaId = memberId;
+    item.dataset.layoutType = 'persona';
+    if (subgroupId) item.dataset.subgroupId = subgroupId;
 
     const avatar = document.createElement('img');
     avatar.src = getThumbUrl(memberId);
@@ -496,42 +532,8 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
     avatar.onerror = () => { avatar.src = '/img/ai4.png'; };
 
     const dragHandle = document.createElement('i');
-    dragHandle.className = 'fa-solid fa-bars cp2-variant-drag-handle';
+    dragHandle.className = 'fa-solid fa-grip-vertical cp2-sort-handle cp2-variant-drag-handle';
     dragHandle.title = '拖拽排序';
-    if (isMainCard) {
-      dragHandle.style.visibility = 'hidden'; // 主卡固定在第一位，不可拖拽
-    } else {
-      item.draggable = true;
-      item.dataset.variantId = memberId;
-      item.addEventListener('dragstart', e => {
-        e.dataTransfer?.setData('text/plain', memberId);
-        item.style.opacity = '0.5';
-      });
-      item.addEventListener('dragend', () => {
-        item.style.opacity = '1';
-        document.querySelectorAll('.cp2-variant-item').forEach((el: any) => el.style.borderTop = '');
-      });
-      item.addEventListener('dragover', e => {
-        e.preventDefault();
-        item.style.borderTop = '2px solid var(--SmartThemeQuoteColor)';
-      });
-      item.addEventListener('dragleave', () => {
-        item.style.borderTop = '';
-      });
-      item.addEventListener('drop', e => {
-        e.preventDefault();
-        e.stopPropagation();
-        item.style.borderTop = '';
-        const draggingId = e.dataTransfer?.getData('text/plain');
-        if (draggingId && draggingId !== memberId && !manager.isParent(draggingId)) {
-          if (!manager.canReorderWithinSection(parentId, draggingId, memberId)) return;
-          manager.reorderChild(parentId, draggingId, memberId);
-          manager.reorderWithinSubgroup(parentId, draggingId, memberId);
-          renderVariantsPanel(true);
-        }
-      });
-    }
-
     item.appendChild(dragHandle);
 
     const name = getPersonaName(memberId);
@@ -578,6 +580,14 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
       actions.appendChild(bindingWrap);
     }
 
+    if (isEntry) {
+      const entryIcon = document.createElement('i');
+      entryIcon.className = 'fa-solid fa-eye cp2-variant-action-btn';
+      entryIcon.title = tUi('personaCollapse.leftListEntry', '左侧列表入口');
+      entryIcon.setAttribute('aria-label', entryIcon.title);
+      actions.appendChild(entryIcon);
+    }
+
     const copyBtn = document.createElement('i');
     copyBtn.className = 'fa-solid fa-copy cp2-variant-action-btn';
     copyBtn.title = '复制此人设并加入当前分支';
@@ -595,36 +605,7 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
     };
     actions.appendChild(copyBtn);
 
-    if (isMainCard) {
-      const badge = document.createElement('span');
-      badge.className = 'cp2-variant-parent-badge';
-      badge.textContent = '主卡';
-      actions.appendChild(badge);
-    } else {
-      const moveSelect = document.createElement('select');
-      moveSelect.className = 'cp2-subgroup-select';
-      moveSelect.title = tUi('personaCollapse.moveToSubgroup', '移动到分组');
-      moveSelect.setAttribute('aria-label', tUi('personaCollapse.moveToSubgroup', '移动到分组'));
-      const ungroupedOption = document.createElement('option');
-      ungroupedOption.value = '';
-      ungroupedOption.textContent = tUi('personaCollapse.removeFromSubgroup', '移出分组');
-      moveSelect.appendChild(ungroupedOption);
-      for (const group of sections.groups) {
-        const option = document.createElement('option');
-        option.value = group.id;
-        option.textContent = group.name;
-        moveSelect.appendChild(option);
-      }
-      moveSelect.value = sections.groups.find(group => group.personaIds.includes(memberId))?.id || '';
-      moveSelect.addEventListener('click', event => event.stopPropagation());
-      moveSelect.addEventListener('change', event => {
-        event.stopPropagation();
-        manager.movePersonaToSubgroup(parentId, memberId, moveSelect.value || null, children);
-        renderVariantsPanel(true);
-      });
-      actions.appendChild(moveSelect);
-
-      // ❌ 移出分支按钮
+    if (!isEntry) {
       const unlinkBtn = document.createElement('i');
       unlinkBtn.className = 'fa-solid fa-xmark cp2-variant-action-btn';
       unlinkBtn.title = '移出该分支';
@@ -652,124 +633,108 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
     return item;
   };
 
-  const mainItem = createMemberItem(parentId, true);
-  mainItem.classList.add('cp2-main-persona');
-  list.appendChild(mainItem);
-  for (const memberId of sections.ungrouped) list.appendChild(createMemberItem(memberId, false));
-
-  const renderSectionItems = (container: HTMLElement, memberIds: string[]): void => {
-    if (memberIds.length === 0) {
-      const empty = document.createElement('div');
-      empty.className = 'cp2-subgroup-empty';
-      empty.textContent = tUi('personaCollapse.emptySubgroup', '暂无人设');
-      container.appendChild(empty);
-      return;
-    }
-    for (const memberId of memberIds) container.appendChild(createMemberItem(memberId, false));
-  };
-
-  for (const group of sections.groups) {
+  const createSubgroupSection = (groupId: string): HTMLElement => {
+    const subgroup = subgroupById.get(groupId);
+    const memberIds = layout.subgroupMembers[groupId] || subgroup?.personaIds || [];
     const section = document.createElement('div');
-    section.className = 'cp2-subgroup';
+    section.className = `cp2-subgroup cp2-root-item${subgroup?.collapsed ? ' is-collapsed' : ''}`;
+    section.dataset.layoutType = 'subgroup';
+    section.dataset.subgroupId = groupId;
+
     const header = document.createElement('div');
     header.className = 'cp2-subgroup-header';
 
+    const handle = document.createElement('i');
+    handle.className = 'fa-solid fa-grip-vertical cp2-sort-handle cp2-subgroup-handle';
+    handle.title = '拖拽排序';
+    header.appendChild(handle);
+
+    const titleWrap = document.createElement('div');
+    titleWrap.className = 'cp2-subgroup-title-wrap';
+
+    const name = document.createElement('span');
+    name.className = 'cp2-subgroup-name';
+    name.textContent = subgroup?.name || groupId;
+    name.title = subgroup?.name || groupId;
+    titleWrap.appendChild(name);
+
+    const count = document.createElement('span');
+    count.className = 'cp2-subgroup-count';
+    count.textContent = String(memberIds.length);
+    titleWrap.appendChild(count);
+    header.appendChild(titleWrap);
+
     const toggle = document.createElement('button');
-    toggle.className = 'cp2-subgroup-toggle';
-    toggle.title = group.collapsed
+    toggle.className = 'cp2-subgroup-toggle cp2-icon-btn';
+    toggle.title = subgroup?.collapsed
       ? tUi('personaCollapse.expandSubgroup', '展开分组')
       : tUi('personaCollapse.collapseSubgroup', '折叠分组');
-    toggle.setAttribute('aria-expanded', String(!group.collapsed));
-    toggle.innerHTML = `<i class="fa-solid fa-chevron-${group.collapsed ? 'right' : 'down'}"></i>`;
+    toggle.setAttribute('aria-label', toggle.title);
+    toggle.setAttribute('aria-expanded', String(!(subgroup?.collapsed ?? false)));
+    toggle.innerHTML = `<i class="fa-solid fa-chevron-${subgroup?.collapsed ? 'right' : 'down'}"></i>`;
     toggle.addEventListener('click', event => {
       event.stopPropagation();
-      manager.setSubgroupCollapsed(parentId, group.id, !group.collapsed);
-      renderVariantsPanel(true);
+      manager.setSubgroupCollapsed(parentId, groupId, !(subgroup?.collapsed ?? false));
+      renderVariantsPanel(true, currentId);
     });
     header.appendChild(toggle);
 
-    if (editingSubgroupId === group.id) {
-      const input = document.createElement('input');
-      input.className = 'text_pole cp2-subgroup-name-input';
-      input.value = group.name;
-      input.placeholder = tUi('personaCollapse.newSubgroup', '新分组');
-      let finished = false;
-      const finishEditing = (save: boolean) => {
-        if (finished) return;
-        finished = true;
-        if (save) manager.renameSubgroup(parentId, group.id, input.value);
-        editingSubgroupId = null;
-        renderVariantsPanel(true);
-      };
-      input.addEventListener('click', event => event.stopPropagation());
-      input.addEventListener('keydown', event => {
-        if (event.key === 'Enter') {
-          event.preventDefault();
-          finishEditing(true);
-        } else if (event.key === 'Escape') {
-          event.preventDefault();
-          finishEditing(false);
-        }
-      });
-      input.addEventListener('blur', () => finishEditing(true), { once: true });
-      header.appendChild(input);
-      setTimeout(() => input.focus(), 0);
-    } else {
-      const name = document.createElement('span');
-      name.className = 'cp2-subgroup-name';
-      name.textContent = group.name;
-      name.title = group.name;
-      header.appendChild(name);
+    header.addEventListener('click', () => {
+      manager.setSubgroupCollapsed(parentId, groupId, !(subgroup?.collapsed ?? false));
+      renderVariantsPanel(true, currentId);
+    });
 
-      const count = document.createElement('span');
-      count.className = 'cp2-subgroup-count';
-      count.textContent = String(group.personaIds.length);
-      header.appendChild(count);
-
-      const edit = document.createElement('button');
-      edit.className = 'cp2-icon-btn';
-      edit.title = tUi('personaCollapse.renameSubgroup', '重命名分组');
-      edit.setAttribute('aria-label', edit.title);
-      edit.innerHTML = '<i class="fa-solid fa-pencil"></i>';
-      edit.addEventListener('click', event => {
-        event.stopPropagation();
-        editingSubgroupId = group.id;
-        renderVariantsPanel(true);
-      });
-      header.appendChild(edit);
-
-      const remove = document.createElement('button');
-      remove.className = 'cp2-icon-btn cp2-subgroup-delete';
-      remove.title = tUi('personaCollapse.deleteSubgroup', '删除分组');
-      remove.setAttribute('aria-label', remove.title);
-      remove.innerHTML = '<i class="fa-solid fa-trash"></i>';
-      remove.addEventListener('click', event => {
-        event.stopPropagation();
-        const message = tUi(
-          'personaCollapse.deleteSubgroupConfirm',
-          `删除“${group.name}”分组？其中人设将移回未分组。`,
-        );
-        new Popup(`<p>${escapeHtml(message)}</p>`, POPUP_TYPE.CONFIRM, '', {
-          okButton: tUi('personaCollapse.delete', '删除'),
-          cancelButton: tUi('personaCollapse.cancel', '取消'),
-          onOk: () => {
-            manager.deleteSubgroup(parentId, group.id);
-            if (editingSubgroupId === group.id) editingSubgroupId = null;
-            renderVariantsPanel(true);
-          },
-        }).show();
-      });
-      header.appendChild(remove);
-    }
     section.appendChild(header);
+
+    const body = document.createElement('div');
+    body.className = 'cp2-subgroup-body';
+    body.hidden = subgroup?.collapsed ?? false;
 
     const items = document.createElement('div');
     items.className = 'cp2-subgroup-items';
-    items.hidden = group.collapsed;
-    renderSectionItems(items, group.personaIds);
-    section.appendChild(items);
-    list.appendChild(section);
+    items.style.minHeight = '12px';
+    for (const memberId of memberIds) {
+      items.appendChild(createPersonaItem(memberId, { subgroupId: groupId }));
+    }
+    body.appendChild(items);
+    section.appendChild(body);
+
+    return section;
+  };
+
+  for (const item of layout.root) {
+    if (item.type === 'persona') {
+      list.appendChild(createPersonaItem(item.id, { isEntry: item.id === parentId }));
+    } else {
+      list.appendChild(createSubgroupSection(item.id));
+    }
   }
+
+  destroyBranchSortables = mountBranchSortables({
+    root: list,
+    onCommit: snapshot => {
+      const accepted = manager.applyBranchLayoutSnapshot(parentId, snapshot, children);
+      if (!accepted) return false;
+      queueMicrotask(() => renderVariantsPanel(true, currentId));
+      return true;
+    },
+    onExpandSubgroup: (subgroupId, section) => {
+      if (manager.setSubgroupCollapsed(parentId, subgroupId, false)) {
+        section.classList.remove('is-collapsed');
+        const body = section.querySelector<HTMLElement>(':scope > .cp2-subgroup-body');
+        if (body) body.hidden = false;
+        const toggle = section.querySelector<HTMLElement>('.cp2-subgroup-toggle');
+        if (toggle) {
+          toggle.setAttribute('aria-expanded', 'true');
+          toggle.title = tUi('personaCollapse.collapseSubgroup', '折叠分组');
+          toggle.innerHTML = '<i class="fa-solid fa-chevron-down"></i>';
+        }
+      }
+    },
+    onDragStateChange: active => {
+      branchSortableDragging = active;
+    },
+  });
 
   lastPanelPersonaId = currentId;
   lastPanelGroupKey = groupKey;

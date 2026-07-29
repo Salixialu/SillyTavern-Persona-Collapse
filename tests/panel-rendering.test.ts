@@ -4,11 +4,12 @@ import { describe, expect, it } from 'vitest';
 import panelSource from '../src/index.ts?raw';
 
 describe('persona branch panel rendering', () => {
-  it('keeps ungrouped personas flat and offers a remove-from-group action', () => {
-    expect(panelSource).toContain(
-      'for (const memberId of sections.ungrouped) list.appendChild(createMemberItem(memberId, false));',
-    );
-    expect(panelSource).not.toContain("section.className = 'cp2-ungrouped'");
-    expect(panelSource).toContain("tUi('personaCollapse.removeFromSubgroup', '移出分组')");
+  it('renders mixed root layouts through branch sortables', () => {
+    expect(panelSource).toContain('manager.getBranchLayout(parentId, children)');
+    expect(panelSource).toContain('for (const item of layout.root)');
+    expect(panelSource).toContain('mountBranchSortables({');
+    expect(panelSource).toContain("tUi('personaCollapse.leftListEntry', '左侧列表入口')");
+    expect(panelSource).not.toContain('cp2-subgroup-select');
+    expect(panelSource).not.toContain("tUi('personaCollapse.removeFromSubgroup', '移出分组')");
   });
 });
