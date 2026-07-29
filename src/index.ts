@@ -582,7 +582,7 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
 
     if (isEntry) {
       const entryIcon = document.createElement('i');
-      entryIcon.className = 'fa-solid fa-eye cp2-variant-action-btn';
+      entryIcon.className = 'fa-solid fa-eye cp2-entry-indicator';
       entryIcon.title = tUi('personaCollapse.leftListEntry', '左侧列表入口');
       entryIcon.setAttribute('aria-label', entryIcon.title);
       actions.appendChild(entryIcon);
@@ -744,7 +744,6 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
 
     const body = document.createElement('div');
     body.className = 'cp2-subgroup-body';
-    body.hidden = subgroup?.collapsed ?? false;
 
     const items = document.createElement('div');
     items.className = 'cp2-subgroup-items';
@@ -780,8 +779,6 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
     onExpandSubgroup: (subgroupId, section) => {
       if (manager.setSubgroupCollapsed(parentId, subgroupId, false)) {
         section.classList.remove('is-collapsed');
-        const body = section.querySelector<HTMLElement>(':scope > .cp2-subgroup-body');
-        if (body) body.hidden = false;
         const toggle = section.querySelector<HTMLElement>('.cp2-subgroup-toggle');
         if (toggle) {
           toggle.setAttribute('aria-expanded', 'true');
