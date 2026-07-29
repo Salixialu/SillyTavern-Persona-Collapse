@@ -648,6 +648,9 @@ export class GroupManager {
     if (!children) return;
     const idx = children.indexOf(newParentId);
     if (idx === -1) return;
+
+    // Capture the mixed layout before moving subgroup ownership to the new entry.
+    const promotedLayout = this.cloneBranchLayout(this.getBranchLayout(oldParentId, children).root);
     
     // 从子节点中移除新的组长，加入旧组长
     children.splice(idx, 1);
@@ -680,7 +683,6 @@ export class GroupManager {
       this.settings.collapsedParents.push(newParentId);
     }
 
-    const promotedLayout = this.cloneBranchLayout(this.getBranchLayout(oldParentId, children).root);
     const firstPersonaIndex = promotedLayout.findIndex(item => item.type === 'persona');
     if (firstPersonaIndex === -1) {
       promotedLayout.unshift({ type: 'persona', id: newParentId });
