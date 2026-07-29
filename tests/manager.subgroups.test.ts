@@ -95,6 +95,33 @@ describe('GroupManager subgroup operations', () => {
     manager.setUngroupedCollapsed('parent', false);
     expect(manager.getSettings().ungroupedCollapsed).toEqual([]);
   });
+
+  it('resets all grouping state without changing automatic grouping preferences', () => {
+    const save = vi.fn();
+    const manager = new GroupManager(completeSettings({
+      collapsedParents: ['parent'],
+      childMeta: { a: { note: 'x' } },
+      excludedFromAuto: ['a'],
+      subgroups: {
+        parent: [{ id: 'one', name: '一组', personaIds: ['a'], collapsed: true }],
+      },
+      ungroupedCollapsed: ['parent'],
+    }), save);
+
+    manager.resetGroupingState();
+    expect(manager.getSettings()).toMatchObject({
+      manualGroups: {},
+      collapsedParents: [],
+      childMeta: {},
+      groupNames: {},
+      excludedFromAuto: [],
+      subgroups: {},
+      ungroupedCollapsed: [],
+      autoGroupByName: true,
+      autoGroupByBinding: true,
+    });
+    expect(save).toHaveBeenCalledOnce();
+  });
 });
 
 describe('GroupManager subgroup lifecycle', () => {

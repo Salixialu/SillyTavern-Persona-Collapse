@@ -1430,13 +1430,11 @@ function initExtensionSettings(): void {
   });
 
   wrapper.querySelector('#cp2-btn-reset')?.addEventListener('click', () => {
-    const s = manager.getSettings();
-    s.manualGroups = {};
-    saveSettingsDebounced();
+    manager.resetGroupingState();
     updateAutoGroups();
     renderAvatarBlock();
     renderVariantsPanel(true);
-    toastr.success('已清空所有手动分组');
+    toastr.success(tUi('personaCollapse.resetComplete', '已重置所有分组'));
   });
 }
 

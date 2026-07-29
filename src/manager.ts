@@ -79,6 +79,18 @@ export class GroupManager {
     return this.settings;
   }
 
+  resetGroupingState(): void {
+    this.settings.manualGroups = {};
+    this.settings.collapsedParents = [];
+    this.settings.childMeta = {};
+    this.settings.groupNames = {};
+    this.settings.excludedFromAuto = [];
+    this.settings.subgroups = {};
+    this.settings.ungroupedCollapsed = [];
+    this._effectiveCache = null;
+    this.saveCallback();
+  }
+
   getSubgroupSections(parentId: string, effectiveChildren: string[]): SubgroupSections {
     const validIds = new Set(effectiveChildren);
     const claimed = new Set<string>();
