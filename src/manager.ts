@@ -131,35 +131,30 @@ export class GroupManager {
     ];
     const validPersonas = new Set([parentId, ...sections.ungrouped]);
     const validSubgroups = new Set(sections.groups.map(group => group.id));
-    const groupedPersonas = new Set(sections.groups.flatMap(group => group.personaIds));
     const seenPersonas = new Set<string>();
     const seenSubgroups = new Set<string>();
-    const cleaned: BranchLayoutItem[] = [];
-    let hasGroupedPersona = false;
+    let hasInvalidItem = false;
 
     if (stored?.[0]?.type === 'persona' && stored[0].id === parentId) {
       for (const item of stored) {
-        if (item.type === 'persona' && groupedPersonas.has(item.id)) hasGroupedPersona = true;
-        if (item.type === 'persona' && validPersonas.has(item.id) && !seenPersonas.has(item.id)) {
-          seenPersonas.add(item.id);
-          cleaned.push(item);
-        } else if (
-          item.type === 'subgroup' &&
-          validSubgroups.has(item.id) &&
-          !seenSubgroups.has(item.id)
-        ) {
-          seenSubgroups.add(item.id);
-          cleaned.push(item);
+        if (item.type === 'persona') {
+          if (!validPersonas.has(item.id) || seenPersonas.has(item.id)) hasInvalidItem = true;
+          else seenPersonas.add(item.id);
+        } else if (item.type === 'subgroup') {
+          if (!validSubgroups.has(item.id) || seenSubgroups.has(item.id)) hasInvalidItem = true;
+          else seenSubgroups.add(item.id);
+        } else {
+          hasInvalidItem = true;
         }
       }
     }
 
-    const storedIsComplete =
-      !hasGroupedPersona &&
+    const storedIsValid =
+      !hasInvalidItem &&
       seenPersonas.size === validPersonas.size &&
       seenSubgroups.size === validSubgroups.size;
     return {
-      root: storedIsComplete ? cleaned : legacyRoot,
+      root: storedIsValid ? stored : legacyRoot,
       subgroupMembers: Object.fromEntries(
         sections.groups.map(group => [group.id, group.personaIds]),
       ),

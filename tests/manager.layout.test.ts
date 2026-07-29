@@ -136,7 +136,7 @@ describe('GroupManager legacy branch layout', () => {
     ]);
   });
 
-  it('cleans unknown and duplicate items from an otherwise complete stored layout', () => {
+  it('falls back when an otherwise complete stored layout has an unknown item', () => {
     const manager = new GroupManager(completeSettings({
       subgroups: {
         parent: [{ id: 'warm', name: '温柔线', personaIds: ['b'], collapsed: false }],
@@ -148,17 +148,39 @@ describe('GroupManager legacy branch layout', () => {
           { type: 'persona', id: 'missing' },
           { type: 'persona', id: 'c' },
           { type: 'persona', id: 'a' },
-          { type: 'persona', id: 'a' },
-          { type: 'subgroup', id: 'missing-group' },
         ],
       },
     }), vi.fn());
 
     expect(manager.getBranchLayout('parent', ['a', 'b', 'c']).root).toEqual([
       { type: 'persona', id: 'parent' },
-      { type: 'subgroup', id: 'warm' },
-      { type: 'persona', id: 'c' },
       { type: 'persona', id: 'a' },
+      { type: 'persona', id: 'c' },
+      { type: 'subgroup', id: 'warm' },
+    ]);
+  });
+
+  it('falls back when an otherwise complete stored layout has a duplicate item', () => {
+    const manager = new GroupManager(completeSettings({
+      subgroups: {
+        parent: [{ id: 'warm', name: '温柔线', personaIds: ['b'], collapsed: false }],
+      },
+      branchLayouts: {
+        parent: [
+          { type: 'persona', id: 'parent' },
+          { type: 'subgroup', id: 'warm' },
+          { type: 'persona', id: 'a' },
+          { type: 'persona', id: 'c' },
+          { type: 'persona', id: 'a' },
+        ],
+      },
+    }), vi.fn());
+
+    expect(manager.getBranchLayout('parent', ['a', 'b', 'c']).root).toEqual([
+      { type: 'persona', id: 'parent' },
+      { type: 'persona', id: 'a' },
+      { type: 'persona', id: 'c' },
+      { type: 'subgroup', id: 'warm' },
     ]);
   });
 
