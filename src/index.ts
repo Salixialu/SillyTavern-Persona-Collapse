@@ -72,12 +72,11 @@ function getThumbUrl(id: string): string {
   return '/thumbnail?type=persona&file=' + encodeURIComponent(id);
 }
 
-function getDefaultGroupTitle(): string {
-  return '人设分支';
-}
-
-function getDisplayGroupTitle(parentId: string): string {
-  return manager.getGroupName(parentId, getDefaultGroupTitle());
+function tUi(key: string, fallback: string): string {
+  const translate = (globalThis as any).i18next?.t;
+  if (typeof translate !== 'function') return fallback;
+  const translated = translate(key, { defaultValue: fallback });
+  return typeof translated === 'string' ? translated : fallback;
 }
 
 function buildCopyName(sourceName: string): string {
@@ -180,6 +179,7 @@ async function duplicatePersonaIntoGroup(parentId: string, sourceId: string): Pr
 
   await createPersonaRecord(avatarId, sourceId, newName);
   manager.linkChildAfter(parentId, avatarId, sourceId);
+  manager.placeCopyInSourceSubgroup(parentId, sourceId, avatarId);
   await personasModule?.getUserAvatars?.(true, parentId);
   renderAvatarBlock();
   renderVariantsPanel(true);
@@ -386,7 +386,7 @@ function renderAvatarBlock(): void {
 
 let lastPanelPersonaId: string | null = null;
 let lastPanelGroupKey: string | null = null;
-let editingGroupNameParentId: string | null = null;
+let editingSubgroupId: string | null = null;
 
 function renderVariantsPanel(force = false, currentIdOverride: string | null = null): void {
   const selectedEl = document.querySelector('#user_avatar_block .avatar-container.selected');
@@ -445,27 +445,20 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
     return;
   }
 
-  const groupTitle = getDisplayGroupTitle(parentId);
-  const groupKey = `${parentId}:${groupTitle}:${children.join(',')}`;
+  const sections = manager.getSubgroupSections(parentId, children);
+  const groupKey = `${parentId}:${children.join(',')}:${JSON.stringify(sections)}`;
   if (!force && currentId === lastPanelPersonaId && groupKey === lastPanelGroupKey) return;
 
   panel.style.display = 'block';
 
   const allMembers = [parentId, ...(effectiveGroups[parentId] || [])];
-  const isEditingTitle = editingGroupNameParentId === parentId;
 
   // 构建 header
   const headerHTML = `
     <div class="cp2-variants-header">
       <div class="cp2-variants-title-wrap">
-        ${isEditingTitle ? `
-          <input class="text_pole cp2-group-title-input" id="cp2-group-title-input" value="${escapeHtml(groupTitle === getDefaultGroupTitle() ? '' : groupTitle)}" placeholder="${getDefaultGroupTitle()}">
-          <button class="cp2-icon-btn" id="cp2-save-group-title" title="保存标题"><i class="fa-solid fa-check"></i></button>
-          <button class="cp2-icon-btn" id="cp2-cancel-group-title" title="取消"><i class="fa-solid fa-xmark"></i></button>
-        ` : `
-          <span class="cp2-variants-header-title">🎭 ${escapeHtml(groupTitle)} (${allMembers.length})</span>
-          <button class="cp2-icon-btn" id="cp2-edit-group-title" title="重命名人设分支"><i class="fa-solid fa-pencil"></i></button>
-        `}
+        <span class="cp2-variants-header-title">🎭 ${escapeHtml(tUi('personaCollapse.branches', '人设分支'))} (${allMembers.length})</span>
+        <button class="cp2-icon-btn" id="cp2-create-subgroup" title="${escapeHtml(tUi('personaCollapse.createSubgroup', '新建分组'))}" aria-label="${escapeHtml(tUi('personaCollapse.createSubgroup', '新建分组'))}"><i class="fa-solid fa-folder-plus"></i></button>
       </div>
       <div class="cp2-variants-header-actions">
         <button class="cp2-variants-add-btn" id="cp2-add-branch-btn" title="批量管理此分支" style="border-radius: 4px; padding: 2px 8px;">
@@ -483,47 +476,16 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
     openGroupManager(parentId);
   });
 
-  panel.querySelector('#cp2-edit-group-title')?.addEventListener('click', e => {
+  panel.querySelector('#cp2-create-subgroup')?.addEventListener('click', e => {
     e.stopPropagation();
-    editingGroupNameParentId = parentId;
+    editingSubgroupId = manager.createSubgroup(parentId).id;
     renderVariantsPanel(true);
   });
-
-  const titleInput = panel.querySelector<HTMLInputElement>('#cp2-group-title-input');
-  const saveTitle = () => {
-    manager.setGroupName(parentId, titleInput?.value || '');
-    editingGroupNameParentId = null;
-    renderVariantsPanel(true);
-  };
-  const cancelTitle = () => {
-    editingGroupNameParentId = null;
-    renderVariantsPanel(true);
-  };
-  panel.querySelector('#cp2-save-group-title')?.addEventListener('click', e => {
-    e.stopPropagation();
-    saveTitle();
-  });
-  panel.querySelector('#cp2-cancel-group-title')?.addEventListener('click', e => {
-    e.stopPropagation();
-    cancelTitle();
-  });
-  titleInput?.addEventListener('click', e => e.stopPropagation());
-  titleInput?.addEventListener('keydown', e => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      saveTitle();
-    } else if (e.key === 'Escape') {
-      e.preventDefault();
-      cancelTitle();
-    }
-  });
-  titleInput?.focus();
 
   // 渲染成员列表
   const list = panel.querySelector('.cp2-variants-list')!;
-  for (const memberId of allMembers) {
+  const createMemberItem = (memberId: string, isMainCard: boolean): HTMLElement => {
     const isCurrentUser = memberId === currentId;
-    const isMainCard = memberId === parentId;
 
     const item = document.createElement('div');
     item.className = 'cp2-variant-item' + (isCurrentUser ? ' active' : '');
@@ -562,8 +524,9 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
         item.style.borderTop = '';
         const draggingId = e.dataTransfer?.getData('text/plain');
         if (draggingId && draggingId !== memberId && !manager.isParent(draggingId)) {
-          // 将 draggingId 移动到 memberId 之前
+          if (!manager.canReorderWithinSection(parentId, draggingId, memberId)) return;
           manager.reorderChild(parentId, draggingId, memberId);
+          manager.reorderWithinSubgroup(parentId, draggingId, memberId);
           renderVariantsPanel(true);
         }
       });
@@ -638,6 +601,29 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
       badge.textContent = '主卡';
       actions.appendChild(badge);
     } else {
+      const moveSelect = document.createElement('select');
+      moveSelect.className = 'cp2-subgroup-select';
+      moveSelect.title = tUi('personaCollapse.moveToSubgroup', '移动到分组');
+      moveSelect.setAttribute('aria-label', tUi('personaCollapse.moveToSubgroup', '移动到分组'));
+      const ungroupedOption = document.createElement('option');
+      ungroupedOption.value = '';
+      ungroupedOption.textContent = tUi('personaCollapse.ungrouped', '未分组');
+      moveSelect.appendChild(ungroupedOption);
+      for (const group of sections.groups) {
+        const option = document.createElement('option');
+        option.value = group.id;
+        option.textContent = group.name;
+        moveSelect.appendChild(option);
+      }
+      moveSelect.value = sections.groups.find(group => group.personaIds.includes(memberId))?.id || '';
+      moveSelect.addEventListener('click', event => event.stopPropagation());
+      moveSelect.addEventListener('change', event => {
+        event.stopPropagation();
+        manager.movePersonaToSubgroup(parentId, memberId, moveSelect.value || null, children);
+        renderVariantsPanel(true);
+      });
+      actions.appendChild(moveSelect);
+
       // ❌ 移出分支按钮
       const unlinkBtn = document.createElement('i');
       unlinkBtn.className = 'fa-solid fa-xmark cp2-variant-action-btn';
@@ -661,9 +647,163 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
           // 直接传入 memberId，不依赖 DOM .selected 查找
           setTimeout(() => renderVariantsPanel(true, memberId), 150)
         );
-      }
-    };
-    list.appendChild(item);
+        }
+      };
+    return item;
+  };
+
+  const mainItem = createMemberItem(parentId, true);
+  mainItem.classList.add('cp2-main-persona');
+  list.appendChild(mainItem);
+
+  const renderSectionItems = (container: HTMLElement, memberIds: string[]): void => {
+    if (memberIds.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'cp2-subgroup-empty';
+      empty.textContent = tUi('personaCollapse.emptySubgroup', '暂无人设');
+      container.appendChild(empty);
+      return;
+    }
+    for (const memberId of memberIds) container.appendChild(createMemberItem(memberId, false));
+  };
+
+  for (const group of sections.groups) {
+    const section = document.createElement('div');
+    section.className = 'cp2-subgroup';
+    const header = document.createElement('div');
+    header.className = 'cp2-subgroup-header';
+
+    const toggle = document.createElement('button');
+    toggle.className = 'cp2-subgroup-toggle';
+    toggle.title = group.collapsed
+      ? tUi('personaCollapse.expandSubgroup', '展开分组')
+      : tUi('personaCollapse.collapseSubgroup', '折叠分组');
+    toggle.setAttribute('aria-expanded', String(!group.collapsed));
+    toggle.innerHTML = `<i class="fa-solid fa-chevron-${group.collapsed ? 'right' : 'down'}"></i>`;
+    toggle.addEventListener('click', event => {
+      event.stopPropagation();
+      manager.setSubgroupCollapsed(parentId, group.id, !group.collapsed);
+      renderVariantsPanel(true);
+    });
+    header.appendChild(toggle);
+
+    if (editingSubgroupId === group.id) {
+      const input = document.createElement('input');
+      input.className = 'text_pole cp2-subgroup-name-input';
+      input.value = group.name;
+      input.placeholder = tUi('personaCollapse.newSubgroup', '新分组');
+      let finished = false;
+      const finishEditing = (save: boolean) => {
+        if (finished) return;
+        finished = true;
+        if (save) manager.renameSubgroup(parentId, group.id, input.value);
+        editingSubgroupId = null;
+        renderVariantsPanel(true);
+      };
+      input.addEventListener('click', event => event.stopPropagation());
+      input.addEventListener('keydown', event => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          finishEditing(true);
+        } else if (event.key === 'Escape') {
+          event.preventDefault();
+          finishEditing(false);
+        }
+      });
+      input.addEventListener('blur', () => finishEditing(true), { once: true });
+      header.appendChild(input);
+      setTimeout(() => input.focus(), 0);
+    } else {
+      const name = document.createElement('span');
+      name.className = 'cp2-subgroup-name';
+      name.textContent = group.name;
+      name.title = group.name;
+      header.appendChild(name);
+
+      const count = document.createElement('span');
+      count.className = 'cp2-subgroup-count';
+      count.textContent = String(group.personaIds.length);
+      header.appendChild(count);
+
+      const edit = document.createElement('button');
+      edit.className = 'cp2-icon-btn';
+      edit.title = tUi('personaCollapse.renameSubgroup', '重命名分组');
+      edit.setAttribute('aria-label', edit.title);
+      edit.innerHTML = '<i class="fa-solid fa-pencil"></i>';
+      edit.addEventListener('click', event => {
+        event.stopPropagation();
+        editingSubgroupId = group.id;
+        renderVariantsPanel(true);
+      });
+      header.appendChild(edit);
+
+      const remove = document.createElement('button');
+      remove.className = 'cp2-icon-btn cp2-subgroup-delete';
+      remove.title = tUi('personaCollapse.deleteSubgroup', '删除分组');
+      remove.setAttribute('aria-label', remove.title);
+      remove.innerHTML = '<i class="fa-solid fa-trash"></i>';
+      remove.addEventListener('click', event => {
+        event.stopPropagation();
+        const message = tUi(
+          'personaCollapse.deleteSubgroupConfirm',
+          `删除“${group.name}”分组？其中人设将移回未分组。`,
+        );
+        new Popup(`<p>${escapeHtml(message)}</p>`, POPUP_TYPE.CONFIRM, '', {
+          okButton: tUi('personaCollapse.delete', '删除'),
+          cancelButton: tUi('personaCollapse.cancel', '取消'),
+          onOk: () => {
+            manager.deleteSubgroup(parentId, group.id);
+            if (editingSubgroupId === group.id) editingSubgroupId = null;
+            renderVariantsPanel(true);
+          },
+        }).show();
+      });
+      header.appendChild(remove);
+    }
+    section.appendChild(header);
+
+    const items = document.createElement('div');
+    items.className = 'cp2-subgroup-items';
+    items.hidden = group.collapsed;
+    renderSectionItems(items, group.personaIds);
+    section.appendChild(items);
+    list.appendChild(section);
+  }
+
+  if (sections.ungrouped.length > 0 || sections.groups.length > 0) {
+    const section = document.createElement('div');
+    section.className = 'cp2-ungrouped';
+    const header = document.createElement('div');
+    header.className = 'cp2-subgroup-header';
+    const toggle = document.createElement('button');
+    toggle.className = 'cp2-subgroup-toggle';
+    toggle.title = sections.ungroupedCollapsed
+      ? tUi('personaCollapse.expandUngrouped', '展开未分组')
+      : tUi('personaCollapse.collapseUngrouped', '折叠未分组');
+    toggle.setAttribute('aria-expanded', String(!sections.ungroupedCollapsed));
+    toggle.innerHTML = `<i class="fa-solid fa-chevron-${sections.ungroupedCollapsed ? 'right' : 'down'}"></i>`;
+    toggle.addEventListener('click', event => {
+      event.stopPropagation();
+      manager.setUngroupedCollapsed(parentId, !sections.ungroupedCollapsed);
+      renderVariantsPanel(true);
+    });
+    header.appendChild(toggle);
+    const name = document.createElement('span');
+    name.className = 'cp2-subgroup-name';
+    name.textContent = tUi('personaCollapse.ungrouped', '未分组');
+    header.appendChild(name);
+    const count = document.createElement('span');
+    count.className = 'cp2-subgroup-count';
+    count.textContent = String(sections.ungrouped.length);
+    header.appendChild(count);
+    section.appendChild(header);
+
+    const items = document.createElement('div');
+    items.className = 'cp2-subgroup-items';
+    items.hidden = sections.ungroupedCollapsed;
+    renderSectionItems(items, sections.ungrouped);
+    section.appendChild(items);
+    list.appendChild(section);
   }
 
   lastPanelPersonaId = currentId;

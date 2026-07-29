@@ -6,6 +6,19 @@
 
 export type ChildMeta = Record<string, unknown>;
 
+export interface PersonaSubgroup {
+  id: string;
+  name: string;
+  personaIds: string[];
+  collapsed: boolean;
+}
+
+export interface SubgroupSections {
+  groups: PersonaSubgroup[];
+  ungrouped: string[];
+  ungroupedCollapsed: boolean;
+}
+
 export interface GroupSettings {
   enabled: boolean;
   manualGroups: Record<string, string[]>;
@@ -15,6 +28,8 @@ export interface GroupSettings {
   excludedFromAuto?: string[];
   autoGroupByName?: boolean;
   autoGroupByBinding?: boolean;
+  subgroups: Record<string, PersonaSubgroup[]>;
+  ungroupedCollapsed: string[];
 }
 
 export class GroupManager {
@@ -36,6 +51,8 @@ export class GroupManager {
       excludedFromAuto: raw?.excludedFromAuto ?? [],
       autoGroupByName: raw?.autoGroupByName ?? true,
       autoGroupByBinding: raw?.autoGroupByBinding ?? true,
+      subgroups: raw?.subgroups ?? {},
+      ungroupedCollapsed: raw?.ungroupedCollapsed ?? [],
     };
 
     // 迁移旧数据：若字段缺失则补齐并保存
@@ -48,7 +65,9 @@ export class GroupManager {
       !raw.groupNames ||
       !raw.excludedFromAuto ||
       raw.autoGroupByName === undefined ||
-      raw.autoGroupByBinding === undefined
+      raw.autoGroupByBinding === undefined ||
+      !raw.subgroups ||
+      !raw.ungroupedCollapsed
     ) {
       needsSave = true;
     }
@@ -58,6 +77,152 @@ export class GroupManager {
 
   getSettings(): GroupSettings {
     return this.settings;
+  }
+
+  getSubgroupSections(parentId: string, effectiveChildren: string[]): SubgroupSections {
+    const validIds = new Set(effectiveChildren);
+    const claimed = new Set<string>();
+    const groups = (this.settings.subgroups[parentId] || []).map(group => ({
+      ...group,
+      personaIds: group.personaIds.filter(id => {
+        if (!validIds.has(id) || claimed.has(id)) return false;
+        claimed.add(id);
+        return true;
+      }),
+    }));
+
+    return {
+      groups,
+      ungrouped: effectiveChildren.filter(id => !claimed.has(id)),
+      ungroupedCollapsed: this.settings.ungroupedCollapsed.includes(parentId),
+    };
+  }
+
+  private createSubgroupId(): string {
+    const randomId = globalThis.crypto?.randomUUID?.()
+      ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    return `subgroup-${randomId}`;
+  }
+
+  createSubgroup(parentId: string, name = '新分组'): PersonaSubgroup {
+    const subgroup: PersonaSubgroup = {
+      id: this.createSubgroupId(),
+      name: name.trim() || '新分组',
+      personaIds: [],
+      collapsed: false,
+    };
+    (this.settings.subgroups[parentId] ||= []).push(subgroup);
+    this.saveCallback();
+    return subgroup;
+  }
+
+  renameSubgroup(parentId: string, subgroupId: string, name: string): boolean {
+    const subgroup = this.settings.subgroups[parentId]?.find(item => item.id === subgroupId);
+    if (!subgroup) return false;
+    subgroup.name = name.trim() || '新分组';
+    this.saveCallback();
+    return true;
+  }
+
+  setSubgroupCollapsed(parentId: string, subgroupId: string, collapsed: boolean): boolean {
+    const subgroup = this.settings.subgroups[parentId]?.find(item => item.id === subgroupId);
+    if (!subgroup) return false;
+    subgroup.collapsed = collapsed;
+    this.saveCallback();
+    return true;
+  }
+
+  setUngroupedCollapsed(parentId: string, collapsed: boolean): void {
+    this.settings.ungroupedCollapsed = this.settings.ungroupedCollapsed.filter(id => id !== parentId);
+    if (collapsed) this.settings.ungroupedCollapsed.push(parentId);
+    this.saveCallback();
+  }
+
+  deleteSubgroup(parentId: string, subgroupId: string): boolean {
+    const groups = this.settings.subgroups[parentId];
+    if (!groups) return false;
+    const next = groups.filter(group => group.id !== subgroupId);
+    if (next.length === groups.length) return false;
+    if (next.length > 0) this.settings.subgroups[parentId] = next;
+    else delete this.settings.subgroups[parentId];
+    this.saveCallback();
+    return true;
+  }
+
+  movePersonaToSubgroup(
+    parentId: string,
+    personaId: string,
+    subgroupId: string | null,
+    effectiveChildren: string[],
+  ): boolean {
+    if (!effectiveChildren.includes(personaId)) return false;
+    const groups = this.settings.subgroups[parentId] || [];
+    const target = subgroupId === null ? null : groups.find(group => group.id === subgroupId);
+    if (subgroupId !== null && !target) return false;
+
+    for (const group of groups) group.personaIds = group.personaIds.filter(id => id !== personaId);
+    if (target) {
+      target.personaIds.push(personaId);
+      const order = new Map(effectiveChildren.map((id, index) => [id, index]));
+      target.personaIds.sort((a, b) =>
+        (order.get(a) ?? Number.MAX_SAFE_INTEGER) - (order.get(b) ?? Number.MAX_SAFE_INTEGER));
+    }
+    this.saveCallback();
+    return true;
+  }
+
+  private removePersonaFromSubgroups(personaId: string, parentId?: string): boolean {
+    let changed = false;
+    const entries: Array<[string, PersonaSubgroup[]]> = parentId
+      ? [[parentId, this.settings.subgroups[parentId] || []]]
+      : Object.entries(this.settings.subgroups);
+    for (const [, groups] of entries) {
+      for (const group of groups) {
+        const next = group.personaIds.filter(id => id !== personaId);
+        if (next.length !== group.personaIds.length) {
+          group.personaIds = next;
+          changed = true;
+        }
+      }
+    }
+    return changed;
+  }
+
+  private clearSubgroupState(parentId: string): boolean {
+    const hadGroups = this.settings.subgroups[parentId] !== undefined;
+    delete this.settings.subgroups[parentId];
+    const before = this.settings.ungroupedCollapsed.length;
+    this.settings.ungroupedCollapsed = this.settings.ungroupedCollapsed.filter(id => id !== parentId);
+    return hadGroups || before !== this.settings.ungroupedCollapsed.length;
+  }
+
+  placeCopyInSourceSubgroup(parentId: string, sourceId: string, copyId: string): void {
+    this.removePersonaFromSubgroups(copyId, parentId);
+    const sourceGroup = this.settings.subgroups[parentId]?.find(group => group.personaIds.includes(sourceId));
+    if (!sourceGroup) return;
+    const sourceIndex = sourceGroup.personaIds.indexOf(sourceId);
+    sourceGroup.personaIds.splice(sourceIndex + 1, 0, copyId);
+    this.saveCallback();
+  }
+
+  private subgroupIdFor(parentId: string, personaId: string): string | null {
+    return this.settings.subgroups[parentId]?.find(group => group.personaIds.includes(personaId))?.id ?? null;
+  }
+
+  canReorderWithinSection(parentId: string, sourceId: string, targetId: string): boolean {
+    return this.subgroupIdFor(parentId, sourceId) === this.subgroupIdFor(parentId, targetId);
+  }
+
+  reorderWithinSubgroup(parentId: string, sourceId: string, targetId: string): boolean {
+    const subgroupId = this.subgroupIdFor(parentId, sourceId);
+    if (!subgroupId || subgroupId !== this.subgroupIdFor(parentId, targetId)) return false;
+    const group = this.settings.subgroups[parentId].find(item => item.id === subgroupId)!;
+    const sourceIndex = group.personaIds.indexOf(sourceId);
+    const targetIndex = group.personaIds.indexOf(targetId);
+    group.personaIds.splice(sourceIndex, 1);
+    group.personaIds.splice(targetIndex, 0, sourceId);
+    this.saveCallback();
+    return true;
   }
 
   setAutoGroups(groups: Record<string, string[]>): void {
@@ -132,6 +297,8 @@ export class GroupManager {
       this._disbandGroupInternal(childId);
     }
 
+    this.removePersonaFromSubgroups(childId);
+
     // 从其他分支中移除 childId
     for (const [pid, children] of Object.entries(this.settings.manualGroups)) {
       const idx = children.indexOf(childId);
@@ -141,6 +308,7 @@ export class GroupManager {
           delete this.settings.manualGroups[pid];
           delete this.settings.groupNames[pid];
           this.settings.collapsedParents = this.settings.collapsedParents.filter(p => p !== pid);
+          this.clearSubgroupState(pid);
         }
       }
     }
@@ -200,10 +368,12 @@ export class GroupManager {
           delete this.settings.manualGroups[parentId];
           delete this.settings.groupNames[parentId];
           this.settings.collapsedParents = this.settings.collapsedParents.filter(p => p !== parentId);
+          this.clearSubgroupState(parentId);
         }
         changed = true;
       }
     }
+    if (this.removePersonaFromSubgroups(childId)) changed = true;
     if (this.settings.childMeta[childId]) {
       delete this.settings.childMeta[childId];
       changed = true;
@@ -257,6 +427,16 @@ export class GroupManager {
       this.settings.groupNames[newParentId] = this.settings.groupNames[oldParentId];
       delete this.settings.groupNames[oldParentId];
     }
+
+    const promotedSubgroups = this.settings.subgroups[oldParentId];
+    if (promotedSubgroups) {
+      this.settings.subgroups[newParentId] = promotedSubgroups;
+      delete this.settings.subgroups[oldParentId];
+      this.removePersonaFromSubgroups(newParentId, newParentId);
+    }
+    const wasUngroupedCollapsed = this.settings.ungroupedCollapsed.includes(oldParentId);
+    this.settings.ungroupedCollapsed = this.settings.ungroupedCollapsed.filter(id => id !== oldParentId);
+    if (wasUngroupedCollapsed) this.settings.ungroupedCollapsed.push(newParentId);
     
     // 迁移折叠状态
     if (this.settings.collapsedParents.includes(oldParentId)) {
@@ -280,6 +460,7 @@ export class GroupManager {
       }
     }
     this._disbandGroupInternal(parentId);
+    this.clearSubgroupState(parentId);
     this._effectiveCache = null;
     this.saveCallback();
   }
@@ -293,6 +474,7 @@ export class GroupManager {
     delete this.settings.manualGroups[parentId];
     delete this.settings.groupNames[parentId];
     this.settings.collapsedParents = this.settings.collapsedParents.filter(p => p !== parentId);
+    this.clearSubgroupState(parentId);
     return true;
   }
 
@@ -352,6 +534,7 @@ export class GroupManager {
           delete this.settings.manualGroups[parentId];
           delete this.settings.groupNames[parentId];
           this.settings.collapsedParents = this.settings.collapsedParents.filter(p => p !== parentId);
+          this.clearSubgroupState(parentId);
         }
       }
     }
@@ -369,6 +552,20 @@ export class GroupManager {
     // 清理孤立 groupNames
     for (const id of Object.keys(this.settings.groupNames)) {
       if (!existing.has(id)) { delete this.settings.groupNames[id]; changed = true; }
+    }
+
+    for (const parentId of Object.keys(this.settings.subgroups)) {
+      if (!existing.has(parentId)) {
+        if (this.clearSubgroupState(parentId)) changed = true;
+        continue;
+      }
+      for (const group of this.settings.subgroups[parentId]) {
+        const next = group.personaIds.filter(id => existing.has(id));
+        if (next.length !== group.personaIds.length) {
+          group.personaIds = next;
+          changed = true;
+        }
+      }
     }
 
     if (changed) {
