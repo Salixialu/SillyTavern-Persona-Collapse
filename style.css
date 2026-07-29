@@ -211,8 +211,7 @@
 .cp2-main-persona {
   margin-bottom: 2px;
 }
-.cp2-subgroup,
-.cp2-ungrouped {
+.cp2-subgroup {
   display: flex;
   flex-direction: column;
   gap: 6px;

@@ -607,7 +607,7 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
       moveSelect.setAttribute('aria-label', tUi('personaCollapse.moveToSubgroup', '移动到分组'));
       const ungroupedOption = document.createElement('option');
       ungroupedOption.value = '';
-      ungroupedOption.textContent = tUi('personaCollapse.ungrouped', '未分组');
+      ungroupedOption.textContent = tUi('personaCollapse.removeFromSubgroup', '移出分组');
       moveSelect.appendChild(ungroupedOption);
       for (const group of sections.groups) {
         const option = document.createElement('option');
@@ -655,6 +655,7 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
   const mainItem = createMemberItem(parentId, true);
   mainItem.classList.add('cp2-main-persona');
   list.appendChild(mainItem);
+  for (const memberId of sections.ungrouped) list.appendChild(createMemberItem(memberId, false));
 
   const renderSectionItems = (container: HTMLElement, memberIds: string[]): void => {
     if (memberIds.length === 0) {
@@ -766,42 +767,6 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
     items.className = 'cp2-subgroup-items';
     items.hidden = group.collapsed;
     renderSectionItems(items, group.personaIds);
-    section.appendChild(items);
-    list.appendChild(section);
-  }
-
-  if (sections.ungrouped.length > 0 || sections.groups.length > 0) {
-    const section = document.createElement('div');
-    section.className = 'cp2-ungrouped';
-    const header = document.createElement('div');
-    header.className = 'cp2-subgroup-header';
-    const toggle = document.createElement('button');
-    toggle.className = 'cp2-subgroup-toggle';
-    toggle.title = sections.ungroupedCollapsed
-      ? tUi('personaCollapse.expandUngrouped', '展开未分组')
-      : tUi('personaCollapse.collapseUngrouped', '折叠未分组');
-    toggle.setAttribute('aria-expanded', String(!sections.ungroupedCollapsed));
-    toggle.innerHTML = `<i class="fa-solid fa-chevron-${sections.ungroupedCollapsed ? 'right' : 'down'}"></i>`;
-    toggle.addEventListener('click', event => {
-      event.stopPropagation();
-      manager.setUngroupedCollapsed(parentId, !sections.ungroupedCollapsed);
-      renderVariantsPanel(true);
-    });
-    header.appendChild(toggle);
-    const name = document.createElement('span');
-    name.className = 'cp2-subgroup-name';
-    name.textContent = tUi('personaCollapse.ungrouped', '未分组');
-    header.appendChild(name);
-    const count = document.createElement('span');
-    count.className = 'cp2-subgroup-count';
-    count.textContent = String(sections.ungrouped.length);
-    header.appendChild(count);
-    section.appendChild(header);
-
-    const items = document.createElement('div');
-    items.className = 'cp2-subgroup-items';
-    items.hidden = sections.ungroupedCollapsed;
-    renderSectionItems(items, sections.ungrouped);
     section.appendChild(items);
     list.appendChild(section);
   }
