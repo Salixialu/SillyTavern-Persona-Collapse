@@ -12,6 +12,7 @@ const completeSettings = (overrides: Partial<GroupSettings> = {}): GroupSettings
   autoGroupByBinding: true,
   subgroups: {},
   ungroupedCollapsed: [],
+  branchLayouts: {},
   ...overrides,
 });
 
@@ -117,6 +118,7 @@ describe('GroupManager subgroup operations', () => {
       excludedFromAuto: [],
       subgroups: {},
       ungroupedCollapsed: [],
+      branchLayouts: {},
       autoGroupByName: true,
       autoGroupByBinding: true,
     });

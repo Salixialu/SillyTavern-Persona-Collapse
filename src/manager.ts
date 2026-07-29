@@ -30,6 +30,14 @@ export interface GroupSettings {
   autoGroupByBinding?: boolean;
   subgroups: Record<string, PersonaSubgroup[]>;
   ungroupedCollapsed: string[];
+  branchLayouts: Record<string, BranchLayoutItem[]>;
+}
+
+export type BranchLayoutItem = { type: 'persona'; id: string } | { type: 'subgroup'; id: string };
+
+export interface BranchLayoutSnapshot {
+  root: BranchLayoutItem[];
+  subgroupMembers: Record<string, string[]>;
 }
 
 export class GroupManager {
@@ -53,6 +61,7 @@ export class GroupManager {
       autoGroupByBinding: raw?.autoGroupByBinding ?? true,
       subgroups: raw?.subgroups ?? {},
       ungroupedCollapsed: raw?.ungroupedCollapsed ?? [],
+      branchLayouts: raw?.branchLayouts ?? {},
     };
 
     // 迁移旧数据：若字段缺失则补齐并保存
@@ -67,7 +76,8 @@ export class GroupManager {
       raw.autoGroupByName === undefined ||
       raw.autoGroupByBinding === undefined ||
       !raw.subgroups ||
-      !raw.ungroupedCollapsed
+      !raw.ungroupedCollapsed ||
+      !raw.branchLayouts
     ) {
       needsSave = true;
     }
@@ -87,6 +97,7 @@ export class GroupManager {
     this.settings.excludedFromAuto = [];
     this.settings.subgroups = {};
     this.settings.ungroupedCollapsed = [];
+    this.settings.branchLayouts = {};
     this._effectiveCache = null;
     this.saveCallback();
   }
@@ -107,6 +118,51 @@ export class GroupManager {
       groups,
       ungrouped: effectiveChildren.filter(id => !claimed.has(id)),
       ungroupedCollapsed: this.settings.ungroupedCollapsed.includes(parentId),
+    };
+  }
+
+  getBranchLayout(parentId: string, effectiveChildren: string[]): BranchLayoutSnapshot {
+    const sections = this.getSubgroupSections(parentId, effectiveChildren);
+    const stored = this.settings.branchLayouts[parentId];
+    const legacyRoot: BranchLayoutItem[] = [
+      { type: 'persona', id: parentId },
+      ...sections.ungrouped.map(id => ({ type: 'persona' as const, id })),
+      ...sections.groups.map(group => ({ type: 'subgroup' as const, id: group.id })),
+    ];
+    const validPersonas = new Set([parentId, ...sections.ungrouped]);
+    const validSubgroups = new Set(sections.groups.map(group => group.id));
+    const groupedPersonas = new Set(sections.groups.flatMap(group => group.personaIds));
+    const seenPersonas = new Set<string>();
+    const seenSubgroups = new Set<string>();
+    const cleaned: BranchLayoutItem[] = [];
+    let hasGroupedPersona = false;
+
+    if (stored?.[0]?.type === 'persona' && stored[0].id === parentId) {
+      for (const item of stored) {
+        if (item.type === 'persona' && groupedPersonas.has(item.id)) hasGroupedPersona = true;
+        if (item.type === 'persona' && validPersonas.has(item.id) && !seenPersonas.has(item.id)) {
+          seenPersonas.add(item.id);
+          cleaned.push(item);
+        } else if (
+          item.type === 'subgroup' &&
+          validSubgroups.has(item.id) &&
+          !seenSubgroups.has(item.id)
+        ) {
+          seenSubgroups.add(item.id);
+          cleaned.push(item);
+        }
+      }
+    }
+
+    const storedIsComplete =
+      !hasGroupedPersona &&
+      seenPersonas.size === validPersonas.size &&
+      seenSubgroups.size === validSubgroups.size;
+    return {
+      root: storedIsComplete ? cleaned : legacyRoot,
+      subgroupMembers: Object.fromEntries(
+        sections.groups.map(group => [group.id, group.personaIds]),
+      ),
     };
   }
 
