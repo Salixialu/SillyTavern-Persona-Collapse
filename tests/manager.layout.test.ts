@@ -408,3 +408,115 @@ describe('GroupManager applyBranchLayoutSnapshot', () => {
     expect(save).toHaveBeenCalledOnce();
   });
 });
+
+describe('GroupManager branch layout lifecycle', () => {
+  it('keeps the new parent branch layout when a child is relinked away from the old parent', () => {
+    const manager = new GroupManager(completeSettings({
+      manualGroups: {
+        parent: ['a'],
+        next: ['b'],
+      },
+      branchLayouts: {
+        parent: [{ type: 'persona', id: 'parent' }, { type: 'persona', id: 'a' }],
+        next: [{ type: 'persona', id: 'next' }, { type: 'persona', id: 'b' }],
+      },
+    }), vi.fn());
+
+    manager.linkChild('next', 'a');
+
+    expect(manager.getSettings().manualGroups).toEqual({
+      next: ['b', 'a'],
+    });
+    expect(manager.getSettings().branchLayouts.parent).toBeUndefined();
+    expect(manager.getSettings().branchLayouts.next).toEqual([
+      { type: 'persona', id: 'next' },
+      { type: 'persona', id: 'b' },
+      { type: 'persona', id: 'a' },
+    ]);
+  });
+
+  it('removes deleted personas from stored layouts and clears deleted branch roots', () => {
+    const manager = new GroupManager(completeSettings({
+      manualGroups: {
+        parent: ['a', 'b'],
+        next: ['c'],
+      },
+      branchLayouts: {
+        parent: [
+          { type: 'persona', id: 'parent' },
+          { type: 'persona', id: 'a' },
+          { type: 'persona', id: 'b' },
+        ],
+        next: [
+          { type: 'persona', id: 'next' },
+          { type: 'persona', id: 'c' },
+        ],
+      },
+    }), vi.fn());
+
+    expect(manager.cleanupDeletedPersonas(['parent', 'a'])).toBe(true);
+    expect(manager.getSettings().branchLayouts.parent).toEqual([
+      { type: 'persona', id: 'parent' },
+      { type: 'persona', id: 'a' },
+    ]);
+    expect(manager.getSettings().branchLayouts.next).toBeUndefined();
+  });
+
+  it('promotes the branch layout to the new parent persona', () => {
+    const manager = new GroupManager(completeSettings({
+      manualGroups: {
+        parent: ['a', 'b', 'c'],
+      },
+      subgroups: {
+        parent: [{ id: 'warm', name: '温柔线', personaIds: ['b'], collapsed: false }],
+      },
+      branchLayouts: {
+        parent: [
+          { type: 'persona', id: 'parent' },
+          { type: 'persona', id: 'a' },
+          { type: 'subgroup', id: 'warm' },
+          { type: 'persona', id: 'c' },
+        ],
+      },
+    }), vi.fn());
+
+    manager.promoteToParent('parent', 'b');
+
+    expect(manager.getSettings().manualGroups).toEqual({ b: ['parent', 'a', 'c'] });
+    expect(manager.getSettings().subgroups.b).toEqual([
+      { id: 'warm', name: '温柔线', personaIds: [], collapsed: false },
+    ]);
+    expect(manager.getSettings().branchLayouts.parent).toBeUndefined();
+    expect(manager.getSettings().branchLayouts.b[0]).toEqual({ type: 'persona', id: 'b' });
+  });
+
+  it('places a root copy beside its source in the stored branch layout', () => {
+    const manager = new GroupManager(completeSettings({
+      manualGroups: {
+        parent: ['a', 'b', 'c'],
+      },
+      subgroups: {
+        parent: [{ id: 'warm', name: '温柔线', personaIds: ['b'], collapsed: false }],
+      },
+      branchLayouts: {
+        parent: [
+          { type: 'persona', id: 'parent' },
+          { type: 'persona', id: 'a' },
+          { type: 'subgroup', id: 'warm' },
+          { type: 'persona', id: 'c' },
+        ],
+      },
+    }), vi.fn());
+
+    manager.linkChildAfter('parent', 'copy-a', 'a');
+
+    expect(manager.getSettings().manualGroups.parent).toEqual(['a', 'copy-a', 'b', 'c']);
+    expect(manager.getSettings().branchLayouts.parent).toEqual([
+      { type: 'persona', id: 'parent' },
+      { type: 'persona', id: 'a' },
+      { type: 'persona', id: 'copy-a' },
+      { type: 'subgroup', id: 'warm' },
+      { type: 'persona', id: 'c' },
+    ]);
+  });
+});

@@ -57,10 +57,23 @@ describe('GroupManager subgroup migration', () => {
 describe('GroupManager subgroup operations', () => {
   it('creates, renames, folds and deletes a subgroup without changing branch links', () => {
     const save = vi.fn();
-    const manager = new GroupManager(completeSettings(), save);
+    const manager = new GroupManager(completeSettings({
+      branchLayouts: {
+        parent: [
+          { type: 'persona', id: 'parent' },
+          { type: 'persona', id: 'a' },
+          { type: 'subgroup', id: 'warm' },
+          { type: 'persona', id: 'c' },
+        ],
+      },
+    }), save);
     const subgroup = manager.createSubgroup('parent', '  新分组  ');
 
     expect(subgroup.name).toBe('新分组');
+    expect(manager.getSettings().branchLayouts.parent.at(-1)).toEqual({
+      type: 'subgroup',
+      id: subgroup.id,
+    });
     manager.renameSubgroup('parent', subgroup.id, '  温柔线  ');
     manager.setSubgroupCollapsed('parent', subgroup.id, true);
     manager.movePersonaToSubgroup('parent', 'b', subgroup.id, ['a', 'b', 'c']);
@@ -69,6 +82,30 @@ describe('GroupManager subgroup operations', () => {
     expect(manager.getSettings().manualGroups.parent).toEqual(['a', 'b', 'c']);
     expect(manager.getSubgroupSections('parent', ['a', 'b', 'c']).ungrouped).toEqual(['a', 'b', 'c']);
     expect(save).toHaveBeenCalledTimes(5);
+  });
+
+  it('expands a deleted subgroup back into the root layout in place', () => {
+    const manager = new GroupManager(completeSettings({
+      subgroups: {
+        parent: [{ id: 'warm', name: '温柔线', personaIds: ['b'], collapsed: false }],
+      },
+      branchLayouts: {
+        parent: [
+          { type: 'persona', id: 'parent' },
+          { type: 'persona', id: 'a' },
+          { type: 'subgroup', id: 'warm' },
+          { type: 'persona', id: 'c' },
+        ],
+      },
+    }), vi.fn());
+
+    expect(manager.deleteSubgroup('parent', 'warm')).toBe(true);
+    expect(manager.getSettings().branchLayouts.parent).toEqual([
+      { type: 'persona', id: 'parent' },
+      { type: 'persona', id: 'a' },
+      { type: 'persona', id: 'b' },
+      { type: 'persona', id: 'c' },
+    ]);
   });
 
   it('keeps one membership and follows effective branch order', () => {
@@ -133,12 +170,22 @@ describe('GroupManager subgroup lifecycle', () => {
       subgroups: {
         parent: [{ id: 'one', name: '一组', personaIds: ['a'], collapsed: false }],
       },
+      branchLayouts: {
+        parent: [
+          { type: 'persona', id: 'parent' },
+          { type: 'subgroup', id: 'one' },
+        ],
+      },
     }), vi.fn());
 
     manager.placeCopyInSourceSubgroup('parent', 'a', 'copy-a');
     manager.placeCopyInSourceSubgroup('parent', 'b', 'copy-b');
     expect(manager.getSettings().subgroups.parent[0].personaIds).toEqual(['a', 'copy-a']);
     expect(manager.getSubgroupSections('parent', ['a', 'copy-a', 'b', 'copy-b']).ungrouped).toEqual(['b', 'copy-b']);
+    expect(manager.getSettings().branchLayouts.parent).toEqual([
+      { type: 'persona', id: 'parent' },
+      { type: 'subgroup', id: 'one' },
+    ]);
   });
 
   it('cleans deleted personas and removes subgroup state when a branch disappears', () => {

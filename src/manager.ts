@@ -162,6 +162,50 @@ export class GroupManager {
     };
   }
 
+  private cloneBranchLayout(root: BranchLayoutItem[]): BranchLayoutItem[] {
+    return root.map(item => ({ ...item }));
+  }
+
+  private ensureBranchLayout(parentId: string, effectiveChildren: string[]): BranchLayoutItem[] {
+    const stored = this.settings.branchLayouts[parentId];
+    if (stored) return stored;
+    const derived = this.cloneBranchLayout(this.getBranchLayout(parentId, effectiveChildren).root);
+    this.settings.branchLayouts[parentId] = derived;
+    return derived;
+  }
+
+  private insertPersonaBeforeFirstGroup(root: BranchLayoutItem[], personaId: string): void {
+    if (root.some(item => item.type === 'persona' && item.id === personaId)) return;
+    const insertAt = root.findIndex(item => item.type === 'subgroup');
+    root.splice(insertAt === -1 ? root.length : insertAt, 0, { type: 'persona', id: personaId });
+  }
+
+  private movePersonaAfter(root: BranchLayoutItem[], personaId: string, targetId: string): void {
+    const targetIndex = root.findIndex(item => item.type === 'persona' && item.id === targetId);
+    if (targetIndex === -1) return;
+    const existingIndex = root.findIndex(item => item.type === 'persona' && item.id === personaId);
+    if (existingIndex !== -1) {
+      root.splice(existingIndex, 1);
+    }
+    root.splice(targetIndex + (existingIndex !== -1 && existingIndex < targetIndex ? 0 : 1), 0, {
+      type: 'persona',
+      id: personaId,
+    });
+  }
+
+  private removePersonaFromBranchLayouts(personaId: string): boolean {
+    let changed = false;
+    for (const layout of Object.values(this.settings.branchLayouts)) {
+      for (let i = layout.length - 1; i >= 0; i--) {
+        if (layout[i].type === 'persona' && layout[i].id === personaId) {
+          layout.splice(i, 1);
+          changed = true;
+        }
+      }
+    }
+    return changed;
+  }
+
   applyBranchLayoutSnapshot(
     parentId: string,
     snapshot: BranchLayoutSnapshot,
@@ -279,6 +323,10 @@ export class GroupManager {
       collapsed: false,
     };
     (this.settings.subgroups[parentId] ||= []).push(subgroup);
+    this.ensureBranchLayout(parentId, this.getEffectiveGroups()[parentId] ?? this.settings.manualGroups[parentId] ?? []).push({
+      type: 'subgroup',
+      id: subgroup.id,
+    });
     this.saveCallback();
     return subgroup;
   }
@@ -308,10 +356,16 @@ export class GroupManager {
   deleteSubgroup(parentId: string, subgroupId: string): boolean {
     const groups = this.settings.subgroups[parentId];
     if (!groups) return false;
+    const groupIndex = groups.findIndex(group => group.id === subgroupId);
+    if (groupIndex === -1) return false;
+    const deleted = groups[groupIndex];
+    const layout = this.ensureBranchLayout(parentId, this.getEffectiveGroups()[parentId] ?? this.settings.manualGroups[parentId] ?? []);
+    const layoutIndex = layout.findIndex(item => item.type === 'subgroup' && item.id === subgroupId);
     const next = groups.filter(group => group.id !== subgroupId);
-    if (next.length === groups.length) return false;
+    if (layoutIndex === -1) return false;
     if (next.length > 0) this.settings.subgroups[parentId] = next;
     else delete this.settings.subgroups[parentId];
+    layout.splice(layoutIndex, 1, ...deleted.personaIds.map(id => ({ type: 'persona' as const, id })));
     this.saveCallback();
     return true;
   }
@@ -326,6 +380,7 @@ export class GroupManager {
     const groups = this.settings.subgroups[parentId] || [];
     const target = subgroupId === null ? null : groups.find(group => group.id === subgroupId);
     if (subgroupId !== null && !target) return false;
+    const layout = this.ensureBranchLayout(parentId, effectiveChildren);
 
     for (const group of groups) group.personaIds = group.personaIds.filter(id => id !== personaId);
     if (target) {
@@ -333,6 +388,9 @@ export class GroupManager {
       const order = new Map(effectiveChildren.map((id, index) => [id, index]));
       target.personaIds.sort((a, b) =>
         (order.get(a) ?? Number.MAX_SAFE_INTEGER) - (order.get(b) ?? Number.MAX_SAFE_INTEGER));
+      this.removePersonaFromBranchLayouts(personaId);
+    } else {
+      this.insertPersonaBeforeFirstGroup(layout, personaId);
     }
     this.saveCallback();
     return true;
@@ -360,13 +418,16 @@ export class GroupManager {
     delete this.settings.subgroups[parentId];
     const before = this.settings.ungroupedCollapsed.length;
     this.settings.ungroupedCollapsed = this.settings.ungroupedCollapsed.filter(id => id !== parentId);
-    return hadGroups || before !== this.settings.ungroupedCollapsed.length;
+    const hadLayout = this.settings.branchLayouts[parentId] !== undefined;
+    delete this.settings.branchLayouts[parentId];
+    return hadGroups || before !== this.settings.ungroupedCollapsed.length || hadLayout;
   }
 
   placeCopyInSourceSubgroup(parentId: string, sourceId: string, copyId: string): void {
-    this.removePersonaFromSubgroups(copyId, parentId);
     const sourceGroup = this.settings.subgroups[parentId]?.find(group => group.personaIds.includes(sourceId));
     if (!sourceGroup) return;
+    this.removePersonaFromSubgroups(copyId, parentId);
+    this.removePersonaFromBranchLayouts(copyId);
     const sourceIndex = sourceGroup.personaIds.indexOf(sourceId);
     sourceGroup.personaIds.splice(sourceIndex + 1, 0, copyId);
     this.saveCallback();
@@ -465,6 +526,7 @@ export class GroupManager {
     }
 
     this.removePersonaFromSubgroups(childId);
+    this.removePersonaFromBranchLayouts(childId);
 
     // 从其他分支中移除 childId
     for (const [pid, children] of Object.entries(this.settings.manualGroups)) {
@@ -486,6 +548,7 @@ export class GroupManager {
     if (!this.settings.manualGroups[parentId].includes(childId)) {
       this.settings.manualGroups[parentId].push(childId);
     }
+    this.insertPersonaBeforeFirstGroup(this.ensureBranchLayout(parentId, this.settings.manualGroups[parentId]), childId);
     this._effectiveCache = null;
     this.saveCallback();
   }
@@ -510,6 +573,11 @@ export class GroupManager {
       } else {
         children.splice(targetIdx + 1, 0, childId);
       }
+    }
+
+    const sourceGroupId = this.subgroupIdFor(parentId, targetId);
+    if (!sourceGroupId) {
+      this.movePersonaAfter(this.ensureBranchLayout(parentId, children), childId, targetId);
     }
 
     this._effectiveCache = null;
@@ -541,6 +609,7 @@ export class GroupManager {
       }
     }
     if (this.removePersonaFromSubgroups(childId)) changed = true;
+    if (this.removePersonaFromBranchLayouts(childId)) changed = true;
     if (this.settings.childMeta[childId]) {
       delete this.settings.childMeta[childId];
       changed = true;
@@ -610,6 +679,18 @@ export class GroupManager {
       this.settings.collapsedParents = this.settings.collapsedParents.filter(p => p !== oldParentId);
       this.settings.collapsedParents.push(newParentId);
     }
+
+    const promotedLayout = this.cloneBranchLayout(this.getBranchLayout(oldParentId, children).root);
+    const firstPersonaIndex = promotedLayout.findIndex(item => item.type === 'persona');
+    if (firstPersonaIndex === -1) {
+      promotedLayout.unshift({ type: 'persona', id: newParentId });
+    } else {
+      promotedLayout[firstPersonaIndex] = { type: 'persona', id: newParentId };
+    }
+    this.settings.branchLayouts[newParentId] = promotedLayout.filter(
+      (item, index) => item.type !== 'persona' || item.id !== oldParentId || index === firstPersonaIndex,
+    );
+    delete this.settings.branchLayouts[oldParentId];
     
     this._effectiveCache = null;
     this.saveCallback();
@@ -733,6 +814,14 @@ export class GroupManager {
           changed = true;
         }
       }
+    }
+
+    for (const [parentId, layout] of Object.entries(this.settings.branchLayouts)) {
+      const before = layout.length;
+      this.settings.branchLayouts[parentId] = layout.filter(
+        item => item.type !== 'persona' || existing.has(item.id),
+      );
+      if (this.settings.branchLayouts[parentId].length !== before) changed = true;
     }
 
     if (changed) {
