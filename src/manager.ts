@@ -98,6 +98,79 @@ export class GroupManager {
     };
   }
 
+  private createSubgroupId(): string {
+    const randomId = globalThis.crypto?.randomUUID?.()
+      ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    return `subgroup-${randomId}`;
+  }
+
+  createSubgroup(parentId: string, name = '新分组'): PersonaSubgroup {
+    const subgroup: PersonaSubgroup = {
+      id: this.createSubgroupId(),
+      name: name.trim() || '新分组',
+      personaIds: [],
+      collapsed: false,
+    };
+    (this.settings.subgroups[parentId] ||= []).push(subgroup);
+    this.saveCallback();
+    return subgroup;
+  }
+
+  renameSubgroup(parentId: string, subgroupId: string, name: string): boolean {
+    const subgroup = this.settings.subgroups[parentId]?.find(item => item.id === subgroupId);
+    if (!subgroup) return false;
+    subgroup.name = name.trim() || '新分组';
+    this.saveCallback();
+    return true;
+  }
+
+  setSubgroupCollapsed(parentId: string, subgroupId: string, collapsed: boolean): boolean {
+    const subgroup = this.settings.subgroups[parentId]?.find(item => item.id === subgroupId);
+    if (!subgroup) return false;
+    subgroup.collapsed = collapsed;
+    this.saveCallback();
+    return true;
+  }
+
+  setUngroupedCollapsed(parentId: string, collapsed: boolean): void {
+    this.settings.ungroupedCollapsed = this.settings.ungroupedCollapsed.filter(id => id !== parentId);
+    if (collapsed) this.settings.ungroupedCollapsed.push(parentId);
+    this.saveCallback();
+  }
+
+  deleteSubgroup(parentId: string, subgroupId: string): boolean {
+    const groups = this.settings.subgroups[parentId];
+    if (!groups) return false;
+    const next = groups.filter(group => group.id !== subgroupId);
+    if (next.length === groups.length) return false;
+    if (next.length > 0) this.settings.subgroups[parentId] = next;
+    else delete this.settings.subgroups[parentId];
+    this.saveCallback();
+    return true;
+  }
+
+  movePersonaToSubgroup(
+    parentId: string,
+    personaId: string,
+    subgroupId: string | null,
+    effectiveChildren: string[],
+  ): boolean {
+    if (!effectiveChildren.includes(personaId)) return false;
+    const groups = this.settings.subgroups[parentId] || [];
+    const target = subgroupId === null ? null : groups.find(group => group.id === subgroupId);
+    if (subgroupId !== null && !target) return false;
+
+    for (const group of groups) group.personaIds = group.personaIds.filter(id => id !== personaId);
+    if (target) {
+      target.personaIds.push(personaId);
+      const order = new Map(effectiveChildren.map((id, index) => [id, index]));
+      target.personaIds.sort((a, b) =>
+        (order.get(a) ?? Number.MAX_SAFE_INTEGER) - (order.get(b) ?? Number.MAX_SAFE_INTEGER));
+    }
+    this.saveCallback();
+    return true;
+  }
+
   setAutoGroups(groups: Record<string, string[]>): void {
     this.autoGroups = groups;
     this._effectiveCache = null;
