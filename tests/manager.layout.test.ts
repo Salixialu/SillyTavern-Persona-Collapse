@@ -410,6 +410,62 @@ describe('GroupManager applyBranchLayoutSnapshot', () => {
 });
 
 describe('GroupManager branch layout lifecycle', () => {
+  it('materializes an automatic branch after the first explicit layout change', () => {
+    const manager = new GroupManager(completeSettings({ manualGroups: {}, subgroups: {}, branchLayouts: {} }), vi.fn());
+    manager.setAutoGroups({ parent: ['a', 'b'] });
+
+    expect(manager.applyBranchLayoutSnapshot('parent', {
+      root: [
+        { type: 'persona', id: 'a' },
+        { type: 'persona', id: 'parent' },
+        { type: 'persona', id: 'b' },
+      ],
+      subgroupMembers: {},
+    }, ['a', 'b'])).toBe('a');
+
+    expect(manager.getSettings().manualGroups.a).toEqual(['parent', 'b']);
+    expect(manager.getSettings().autoGroupByName).toBe(true);
+    expect(manager.getSettings().autoGroupByBinding).toBe(true);
+  });
+
+  it('promotes the next root persona when the current entry is deleted', () => {
+    const manager = new GroupManager(completeSettings({
+      manualGroups: { parent: ['a', 'b'] },
+      branchLayouts: {
+        parent: [
+          { type: 'persona', id: 'parent' },
+          { type: 'persona', id: 'a' },
+          { type: 'persona', id: 'b' },
+        ],
+      },
+    }), vi.fn());
+
+    expect(manager.cleanupDeletedPersonas(['a', 'b'])).toBe(true);
+    expect(manager.getSettings().manualGroups.a).toEqual(['b']);
+    expect(manager.getBranchLayout('a', ['b']).root[0]).toEqual({ type: 'persona', id: 'a' });
+    expect(JSON.stringify(manager.getSettings().branchLayouts)).not.toContain('parent');
+  });
+
+  it('promotes the first member of the earliest subgroup when no root persona remains', () => {
+    const manager = new GroupManager(completeSettings({
+      manualGroups: { parent: ['a', 'b'] },
+      subgroups: {
+        parent: [{ id: 'warm', name: '温柔线', personaIds: ['a', 'b'], collapsed: false }],
+      },
+      branchLayouts: {
+        parent: [{ type: 'persona', id: 'parent' }, { type: 'subgroup', id: 'warm' }],
+      },
+    }), vi.fn());
+
+    expect(manager.cleanupDeletedPersonas(['a', 'b'])).toBe(true);
+    expect(manager.getSettings().manualGroups.a).toEqual(['b']);
+    expect(manager.getSettings().subgroups.a[0].personaIds).toEqual(['b']);
+    expect(manager.getBranchLayout('a', ['b']).root).toEqual([
+      { type: 'persona', id: 'a' },
+      { type: 'subgroup', id: 'warm' },
+    ]);
+  });
+
   it('keeps the new parent branch layout when a child is relinked away from the old parent', () => {
     const manager = new GroupManager(completeSettings({
       manualGroups: {

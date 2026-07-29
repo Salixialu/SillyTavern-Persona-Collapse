@@ -762,7 +762,24 @@ export class GroupManager {
     // 清理组长
     for (const parentId of Object.keys(this.settings.manualGroups)) {
       if (!existing.has(parentId)) {
-        this._disbandGroupInternal(parentId);
+        const children = this.settings.manualGroups[parentId];
+        const layout = this.getBranchLayout(parentId, children);
+        const rootReplacement = layout.root.find(
+          item => item.type === 'persona' && item.id !== parentId && existing.has(item.id),
+        );
+        let replacementId = rootReplacement?.type === 'persona' ? rootReplacement.id : null;
+        if (!replacementId) {
+          for (const item of layout.root) {
+            if (item.type !== 'subgroup') continue;
+            replacementId = layout.subgroupMembers[item.id]?.find(id => existing.has(id)) ?? null;
+            if (replacementId) break;
+          }
+        }
+        if (replacementId) {
+          this.promoteToParent(parentId, replacementId);
+        } else {
+          this._disbandGroupInternal(parentId);
+        }
         changed = true;
       }
     }

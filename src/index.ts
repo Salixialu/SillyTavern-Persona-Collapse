@@ -509,7 +509,7 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
   });
 
   // 渲染成员列表
-  const list = panel.querySelector('.cp2-variants-list')!;
+  const list = panel.querySelector<HTMLElement>('.cp2-variants-list')!;
   const createPersonaItem = (
     memberId: string,
     options: {
