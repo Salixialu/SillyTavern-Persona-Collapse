@@ -88,6 +88,32 @@ describe('GroupManager legacy branch layout', () => {
     });
   });
 
+  it('returns detached copies for stored layouts', () => {
+    const save = vi.fn();
+    const manager = new GroupManager(completeSettings({
+      subgroups: {
+        parent: [{ id: 'warm', name: '温柔线', personaIds: ['b'], collapsed: false }],
+      },
+      branchLayouts: {
+        parent: [
+          { type: 'persona', id: 'parent' },
+          { type: 'subgroup', id: 'warm' },
+          { type: 'persona', id: 'c' },
+          { type: 'persona', id: 'a' },
+        ],
+      },
+    }), save);
+    const originalStored = JSON.parse(JSON.stringify(manager.getSettings().branchLayouts.parent));
+    const layout = manager.getBranchLayout('parent', ['a', 'b', 'c']);
+
+    layout.root.splice(1, 1);
+    layout.root[0].id = 'mutated';
+    layout.root.push({ type: 'persona', id: 'new' });
+
+    expect(manager.getSettings().branchLayouts.parent).toEqual(originalStored);
+    expect(save).not.toHaveBeenCalled();
+  });
+
   it('falls back completely when unknown and duplicate items hide a missing persona', () => {
     const manager = new GroupManager(completeSettings({
       subgroups: {

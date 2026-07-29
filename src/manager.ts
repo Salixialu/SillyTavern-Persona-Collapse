@@ -153,10 +153,11 @@ export class GroupManager {
       !hasInvalidItem &&
       seenPersonas.size === validPersonas.size &&
       seenSubgroups.size === validSubgroups.size;
+    const root = (storedIsValid ? stored : legacyRoot).map(item => ({ ...item }));
     return {
-      root: storedIsValid ? stored : legacyRoot,
+      root,
       subgroupMembers: Object.fromEntries(
-        sections.groups.map(group => [group.id, group.personaIds]),
+        sections.groups.map(group => [group.id, [...group.personaIds]]),
       ),
     };
   }
