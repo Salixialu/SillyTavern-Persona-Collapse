@@ -205,6 +205,26 @@ export class GroupManager {
     this.saveCallback();
   }
 
+  private subgroupIdFor(parentId: string, personaId: string): string | null {
+    return this.settings.subgroups[parentId]?.find(group => group.personaIds.includes(personaId))?.id ?? null;
+  }
+
+  canReorderWithinSection(parentId: string, sourceId: string, targetId: string): boolean {
+    return this.subgroupIdFor(parentId, sourceId) === this.subgroupIdFor(parentId, targetId);
+  }
+
+  reorderWithinSubgroup(parentId: string, sourceId: string, targetId: string): boolean {
+    const subgroupId = this.subgroupIdFor(parentId, sourceId);
+    if (!subgroupId || subgroupId !== this.subgroupIdFor(parentId, targetId)) return false;
+    const group = this.settings.subgroups[parentId].find(item => item.id === subgroupId)!;
+    const sourceIndex = group.personaIds.indexOf(sourceId);
+    const targetIndex = group.personaIds.indexOf(targetId);
+    group.personaIds.splice(sourceIndex, 1);
+    group.personaIds.splice(targetIndex, 0, sourceId);
+    this.saveCallback();
+    return true;
+  }
+
   setAutoGroups(groups: Record<string, string[]>): void {
     this.autoGroups = groups;
     this._effectiveCache = null;
@@ -276,6 +296,8 @@ export class GroupManager {
     if (this.settings.manualGroups[childId]) {
       this._disbandGroupInternal(childId);
     }
+
+    this.removePersonaFromSubgroups(childId);
 
     // 从其他分支中移除 childId
     for (const [pid, children] of Object.entries(this.settings.manualGroups)) {

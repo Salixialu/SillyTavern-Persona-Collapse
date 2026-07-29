@@ -142,6 +142,10 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .cp2-variants-title-wrap {
   display: flex;
@@ -149,14 +153,6 @@
   gap: 6px;
   min-width: 0;
   flex: 1;
-}
-.cp2-group-title-input {
-  min-width: 0;
-  max-width: 180px;
-  height: 26px;
-  padding: 2px 6px;
-  margin: 0;
-  font-size: 0.9em;
 }
 .cp2-icon-btn {
   width: 24px;
@@ -185,6 +181,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
+  flex-shrink: 0;
 }
 .cp2-variants-add-btn {
   background: transparent;
@@ -210,6 +207,85 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+.cp2-main-persona {
+  margin-bottom: 2px;
+}
+.cp2-subgroup,
+.cp2-ungrouped {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cp2-subgroup-header {
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 4px;
+  border-bottom: 1px solid var(--SmartThemeBorderColor);
+}
+.cp2-subgroup-toggle {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  color: var(--SmartThemeBodyColor);
+  background: transparent;
+  cursor: pointer;
+  opacity: 0.7;
+}
+.cp2-subgroup-name {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.86em;
+  font-weight: 600;
+}
+.cp2-subgroup-name-input {
+  min-width: 0;
+  flex: 1;
+  height: 28px;
+  margin: 0;
+  padding: 3px 7px;
+  font-size: 0.86em;
+}
+.cp2-subgroup-count {
+  min-width: 20px;
+  text-align: center;
+  font-size: 0.76em;
+  opacity: 0.55;
+}
+.cp2-subgroup-items {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 12px;
+}
+.cp2-subgroup-select {
+  width: 88px;
+  min-width: 0;
+  height: 26px;
+  color: var(--SmartThemeBodyColor);
+  background: var(--black30a);
+  border: 1px solid var(--SmartThemeBorderColor);
+  border-radius: 4px;
+  text-overflow: ellipsis;
+}
+.cp2-subgroup-empty {
+  padding: 6px 12px;
+  opacity: 0.55;
+  font-size: 0.8em;
+}
+.cp2-subgroup-delete:hover {
+  color: var(--warning-color, #d35f5f);
+  border-color: var(--warning-color, #d35f5f);
 }
 .cp2-variant-item {
   display: flex;
@@ -314,6 +390,19 @@ body.square-avatars .cp2-variant-avatar {
   background: var(--black50a);
   border-radius: 4px;
   opacity: 0.6;
+}
+
+@media (max-width: 520px) {
+  .cp2-subgroup-select {
+    width: 32px;
+  }
+  .cp2-variant-actions {
+    gap: 2px;
+    margin-left: 4px;
+  }
+  .cp2-subgroup-items {
+    padding-left: 6px;
+  }
 }
 
 /* ====== 多选弹窗 ====== */

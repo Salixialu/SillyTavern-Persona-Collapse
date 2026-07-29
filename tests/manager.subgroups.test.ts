@@ -155,4 +155,30 @@ describe('GroupManager subgroup lifecycle', () => {
     expect(manager.getSettings().subgroups.parent).toBeUndefined();
     expect(manager.getSettings().ungroupedCollapsed).toEqual([]);
   });
+
+  it('removes stale subgroup membership when relinking to another parent', () => {
+    const manager = new GroupManager(completeSettings({
+      manualGroups: { old: ['a', 'b'], next: ['c'] },
+      subgroups: {
+        old: [{ id: 'one', name: '一组', personaIds: ['a', 'b'], collapsed: false }],
+      },
+    }), vi.fn());
+
+    manager.linkChild('next', 'a');
+    expect(manager.getSettings().subgroups.old[0].personaIds).toEqual(['b']);
+    expect(manager.getSettings().manualGroups.next).toEqual(['c', 'a']);
+  });
+});
+
+it('rejects cross-section reorder and reorders within one section', () => {
+  const manager = new GroupManager(completeSettings({
+    subgroups: {
+      parent: [{ id: 'one', name: '一组', personaIds: ['a', 'b'], collapsed: false }],
+    },
+  }), vi.fn());
+
+  expect(manager.reorderWithinSubgroup('parent', 'a', 'b')).toBe(true);
+  expect(manager.getSettings().subgroups.parent[0].personaIds).toEqual(['b', 'a']);
+  expect(manager.canReorderWithinSection('parent', 'a', 'c')).toBe(false);
+  expect(manager.canReorderWithinSection('parent', 'c', 'b')).toBe(false);
 });
