@@ -465,10 +465,10 @@ describe('GroupManager branch layout lifecycle', () => {
   it('promotes the branch layout to the new parent persona', () => {
     const manager = new GroupManager(completeSettings({
       manualGroups: {
-        parent: ['a', 'b', 'c'],
+        parent: ['a', 'b', 'c', 'x'],
       },
       subgroups: {
-        parent: [{ id: 'warm', name: '温柔线', personaIds: ['b'], collapsed: false }],
+        parent: [{ id: 'warm', name: '温柔线', personaIds: ['b', 'x'], collapsed: false }],
       },
       branchLayouts: {
         parent: [
@@ -482,12 +482,13 @@ describe('GroupManager branch layout lifecycle', () => {
 
     manager.promoteToParent('parent', 'b');
 
-    expect(manager.getSettings().manualGroups).toEqual({ b: ['parent', 'a', 'c'] });
+    expect(manager.getSettings().manualGroups).toEqual({ b: ['parent', 'a', 'c', 'x'] });
     expect(manager.getSettings().subgroups.b).toEqual([
-      { id: 'warm', name: '温柔线', personaIds: [], collapsed: false },
+      { id: 'warm', name: '温柔线', personaIds: ['x'], collapsed: false },
     ]);
     expect(manager.getSettings().branchLayouts.parent).toBeUndefined();
     expect(manager.getSettings().branchLayouts.b[0]).toEqual({ type: 'persona', id: 'b' });
+    expect(manager.getSettings().branchLayouts.b).toContainEqual({ type: 'subgroup', id: 'warm' });
   });
 
   it('places a root copy beside its source in the stored branch layout', () => {
