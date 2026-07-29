@@ -96,3 +96,63 @@ describe('GroupManager subgroup operations', () => {
     expect(manager.getSettings().ungroupedCollapsed).toEqual([]);
   });
 });
+
+describe('GroupManager subgroup lifecycle', () => {
+  it('places a copy in the source subgroup and leaves ungrouped copies ungrouped', () => {
+    const manager = new GroupManager(completeSettings({
+      manualGroups: { parent: ['a', 'copy-a', 'b', 'copy-b'] },
+      subgroups: {
+        parent: [{ id: 'one', name: '一组', personaIds: ['a'], collapsed: false }],
+      },
+    }), vi.fn());
+
+    manager.placeCopyInSourceSubgroup('parent', 'a', 'copy-a');
+    manager.placeCopyInSourceSubgroup('parent', 'b', 'copy-b');
+    expect(manager.getSettings().subgroups.parent[0].personaIds).toEqual(['a', 'copy-a']);
+    expect(manager.getSubgroupSections('parent', ['a', 'copy-a', 'b', 'copy-b']).ungrouped).toEqual(['b', 'copy-b']);
+  });
+
+  it('cleans deleted personas and removes subgroup state when a branch disappears', () => {
+    const manager = new GroupManager(completeSettings({
+      subgroups: {
+        parent: [{ id: 'one', name: '一组', personaIds: ['a', 'missing'], collapsed: true }],
+      },
+      ungroupedCollapsed: ['parent'],
+    }), vi.fn());
+
+    manager.cleanupDeletedPersonas(['parent', 'a', 'b', 'c']);
+    expect(manager.getSettings().subgroups.parent[0].personaIds).toEqual(['a']);
+    manager.disbandGroup('parent');
+    expect(manager.getSettings().subgroups.parent).toBeUndefined();
+    expect(manager.getSettings().ungroupedCollapsed).toEqual([]);
+  });
+
+  it('moves subgroup state to a promoted parent and leaves the former parent ungrouped', () => {
+    const manager = new GroupManager(completeSettings({
+      subgroups: {
+        parent: [{ id: 'one', name: '一组', personaIds: ['a', 'b'], collapsed: false }],
+      },
+      ungroupedCollapsed: ['parent'],
+    }), vi.fn());
+
+    manager.promoteToParent('parent', 'a');
+    expect(manager.getSettings().subgroups.a[0].personaIds).toEqual(['b']);
+    expect(manager.getSettings().subgroups.parent).toBeUndefined();
+    expect(manager.getSettings().ungroupedCollapsed).toEqual(['a']);
+    expect(manager.getSubgroupSections('a', ['parent', 'b', 'c']).ungrouped).toContain('parent');
+  });
+
+  it('removes subgroup state when unlinking the final branch member', () => {
+    const manager = new GroupManager(completeSettings({
+      manualGroups: { parent: ['a'] },
+      subgroups: {
+        parent: [{ id: 'one', name: '一组', personaIds: ['a'], collapsed: false }],
+      },
+      ungroupedCollapsed: ['parent'],
+    }), vi.fn());
+
+    manager.unlinkChild('a');
+    expect(manager.getSettings().subgroups.parent).toBeUndefined();
+    expect(manager.getSettings().ungroupedCollapsed).toEqual([]);
+  });
+});
