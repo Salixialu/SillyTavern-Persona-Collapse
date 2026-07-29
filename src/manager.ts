@@ -6,6 +6,19 @@
 
 export type ChildMeta = Record<string, unknown>;
 
+export interface PersonaSubgroup {
+  id: string;
+  name: string;
+  personaIds: string[];
+  collapsed: boolean;
+}
+
+export interface SubgroupSections {
+  groups: PersonaSubgroup[];
+  ungrouped: string[];
+  ungroupedCollapsed: boolean;
+}
+
 export interface GroupSettings {
   enabled: boolean;
   manualGroups: Record<string, string[]>;
@@ -15,6 +28,8 @@ export interface GroupSettings {
   excludedFromAuto?: string[];
   autoGroupByName?: boolean;
   autoGroupByBinding?: boolean;
+  subgroups: Record<string, PersonaSubgroup[]>;
+  ungroupedCollapsed: string[];
 }
 
 export class GroupManager {
@@ -36,6 +51,8 @@ export class GroupManager {
       excludedFromAuto: raw?.excludedFromAuto ?? [],
       autoGroupByName: raw?.autoGroupByName ?? true,
       autoGroupByBinding: raw?.autoGroupByBinding ?? true,
+      subgroups: raw?.subgroups ?? {},
+      ungroupedCollapsed: raw?.ungroupedCollapsed ?? [],
     };
 
     // 迁移旧数据：若字段缺失则补齐并保存
@@ -48,7 +65,9 @@ export class GroupManager {
       !raw.groupNames ||
       !raw.excludedFromAuto ||
       raw.autoGroupByName === undefined ||
-      raw.autoGroupByBinding === undefined
+      raw.autoGroupByBinding === undefined ||
+      !raw.subgroups ||
+      !raw.ungroupedCollapsed
     ) {
       needsSave = true;
     }
@@ -58,6 +77,25 @@ export class GroupManager {
 
   getSettings(): GroupSettings {
     return this.settings;
+  }
+
+  getSubgroupSections(parentId: string, effectiveChildren: string[]): SubgroupSections {
+    const validIds = new Set(effectiveChildren);
+    const claimed = new Set<string>();
+    const groups = (this.settings.subgroups[parentId] || []).map(group => ({
+      ...group,
+      personaIds: group.personaIds.filter(id => {
+        if (!validIds.has(id) || claimed.has(id)) return false;
+        claimed.add(id);
+        return true;
+      }),
+    }));
+
+    return {
+      groups,
+      ungrouped: effectiveChildren.filter(id => !claimed.has(id)),
+      ungroupedCollapsed: this.settings.ungroupedCollapsed.includes(parentId),
+    };
   }
 
   setAutoGroups(groups: Record<string, string[]>): void {
