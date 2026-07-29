@@ -1,124 +1,126 @@
-# Sortable Persona Layout Design
+# 人设分支混合拖拽布局设计
 
-**Status:** Approved for planning
-**Target release:** 3.2.0
-**Baseline:** 3.1.1 (`8c64347` on `source`)
+**状态：** 已确认，可进入实施计划阶段
 
-## Goal
+**目标版本：** 3.2.0
 
-Replace the branch panel's fixed parent and subgroup select controls with a smooth, touch-capable sortable layout. Personas and named subgroups can be mixed at the branch root, subgroup contents can be reordered or moved across groups, and the first root persona becomes the dynamic entry shown in SillyTavern's native persona list.
+**开发基线：** `source` 分支 3.1.1（`8c64347`）
 
-## Product Model
+## 目标
 
-The feature keeps the name **人设分支**, but no persona has a permanent "主卡" identity.
+将人设分支面板中固定的“主卡”以及右侧分组选框，改造成支持鼠标和触屏的流畅拖拽布局。普通人设与具名分组可以在顶层混合排序；人设可以在组内排序、跨组移动或拖出分组；顶层第一位人设自动成为 SillyTavern 左侧原生人设列表中显示的动态入口。
 
-- **Branch:** A collection of related personas currently represented by one visible persona in the native list.
-- **Entry persona:** The first root persona. It is the branch representative visible in the native persona list.
-- **Root persona:** A branch member that is not inside a named subgroup.
-- **Named subgroup:** A collapsible folder inside a branch.
+## 产品模型
 
-The entry persona is a presentation role, not a separate persona type. Moving another persona to the first root slot transfers the role without changing character, chat, or group bindings.
+功能名称继续使用“人设分支”，但不再让任何人设永久拥有“主卡”身份。
 
-## Invariants
+- **人设分支：** 一组相互关联、在左侧列表中折叠收纳的人设集合。
+- **入口人设：** 顶层第一位人设，也是该分支在左侧原生人设列表中的代表。
+- **顶层人设：** 未放入任何具名分组的分支成员。
+- **具名分组：** 人设分支内部可折叠的文件夹。
 
-1. Every branch contains at least one persona.
-2. The first root layout item is always a persona and is the entry persona.
-3. The entry persona is not a subgroup member.
-4. Every other branch persona appears exactly once, either at the root or inside one subgroup.
-5. Every named subgroup appears exactly once at the root.
-6. Subgroups cannot contain other subgroups.
-7. The native persona list shows only the current entry persona for a folded branch.
-8. Dragging changes layout and subgroup membership only; it never copies persona bindings.
+“入口人设”只是一种显示角色，不是独立的人设类型。把其他人设拖到顶层第一位后，入口身份随之转移，但不会修改角色、聊天或群组绑定。
 
-## User Experience
+## 核心不变量
 
-### Branches Without Named Subgroups
+1. 每个人设分支至少包含一个人设。
+2. 顶层布局第一项必须是人设，该人设就是当前入口。
+3. 入口人设不能同时属于具名分组。
+4. 其余人设必须且只能出现一次：位于顶层，或属于一个具名分组。
+5. 每个具名分组必须且只能在顶层出现一次。
+6. 分组不能嵌套分组。
+7. 分支折叠后，左侧原生人设列表只显示当前入口人设。
+8. 拖拽只改变布局顺序与分组归属，不复制或修改人设绑定关系。
 
-The panel behaves like the pre-subgroup branch list. There is no "未分组" label or container. All personas form one flat sortable list, including the entry persona.
+## 用户体验
 
-- Dragging a non-entry persona changes its order.
-- Dragging a persona to the first slot makes it the new entry persona.
-- The former entry becomes a normal root persona at the position produced by the drag operation.
+### 尚未建立具名分组
 
-### Mixed Root Layout
+面板保持旧版人设分支的自然平铺形式，不显示“未分组”标题或容器。所有人设组成一个可排序列表，入口人设也参与拖动。
 
-Once named subgroups exist, root personas and subgroup containers share one sortable root:
+- 拖动非入口人设可调整顺序。
+- 将任意人设拖到第一位，该人设立即成为新入口。
+- 原入口按照本次拖动形成的顺序，变为普通顶层人设。
+
+### 顶层混合布局
+
+建立具名分组后，顶层人设和分组容器共用一个排序区域：
 
 ```text
-[entry persona]
-[root persona]
-[subgroup]
-[root persona]
-[subgroup]
+[入口人设]
+[顶层人设]
+[具名分组]
+[顶层人设]
+[具名分组]
 ```
 
-Subgroups may be placed between root personas, but no subgroup may move before the entry persona.
+分组可以放在普通顶层人设之间，但不能越过入口人设占据第一位。
 
-### Persona Dragging
+### 拖动人设
 
-- Root to root: reorder the persona.
-- Root to subgroup: remove the root item and insert the persona at the selected subgroup position.
-- Subgroup to root: remove subgroup membership and insert the persona at the selected root position.
-- Subgroup to subgroup: transfer membership and insert at the selected position.
-- Within one subgroup: reorder the subgroup members.
-- Persona to absolute first root position: make that persona the new entry.
+- 顶层拖到顶层：调整人设顺序。
+- 顶层拖入分组：从顶层移除，并插入组内指定位置。
+- 组内拖到顶层：移出分组，并插入顶层指定位置。
+- 一个分组拖到另一个分组：转移分组归属，并插入指定位置。
+- 同组内部拖动：调整组内顺序。
+- 拖到顶层绝对第一位：该人设成为新入口。
 
-The current entry cannot be dropped directly into a subgroup. The user first moves another persona to the first slot, then the former entry can be grouped normally. This keeps the first-item invariant visible and predictable.
+当前入口不能直接拖入具名分组。用户需先把另一个人设拖到第一位，再将原入口拖入分组。这样可以让“第一位始终是入口”的规则保持直观和可预测。
 
-### Subgroup Dragging
+### 拖动分组
 
-Each subgroup header has a dedicated grip. A subgroup can be reordered among root personas and other subgroups, except that it cannot occupy the first root slot. A subgroup cannot be dropped inside another subgroup.
+每条分组标题提供独立拖拽柄。分组可以在顶层人设和其他分组之间移动，但不能占据顶层第一位，也不能拖入另一个分组。
 
-### Folding
+### 展开与收纳
 
-- Clicking the chevron toggles the subgroup.
-- Clicking the non-interactive area of the complete subgroup header also toggles it.
-- The grip, rename button, delete button, and rename input stop click propagation.
-- Collapsed state remains persisted per subgroup.
-- While a persona is being dragged, hovering over a collapsed subgroup for 500 ms expands it without interrupting the active drag.
+- 点击小箭头可展开或收纳分组。
+- 点击分组标题中没有交互控件的区域，同样可展开或收纳。
+- 拖拽柄、重命名按钮、删除按钮和名称输入框会阻止点击冒泡，不会误触折叠。
+- 每个分组继续独立保存折叠状态。
+- 拖动人设时，在已折叠分组上停留约 500 毫秒，该分组会自动展开，且不会打断本次拖动。
 
-### Entry Persona Feedback
+### 入口人设提示
 
-The current `主卡` text badge is removed. The entry row instead shows a small eye icon with the tooltip `左侧列表入口`. This communicates visibility without preserving the old parent-child terminology.
+移除现有“主卡”文字徽标。顶层第一行改为显示一个小眼睛图标，悬停提示“左侧列表入口”。这样可以表达其显示作用，同时消除永久主从关系。
 
-Changing the entry updates the folded native list but does not force SillyTavern to switch the currently active persona.
+更换入口后只更新左侧折叠列表的代表，不强制切换 SillyTavern 当前正在使用的人设。
 
-## Visual Design
+## 视觉设计
 
-- Keep the panel compact and theme-aware; do not turn sections into large cards.
-- Use SillyTavern theme variables for borders, body color, quote/accent color, and translucent backgrounds.
-- Persona rows retain the existing avatar, name, title, binding indicators, copy action, and unlink action.
-- Remove the subgroup `<select>` and all related responsive CSS.
-- Subgroup header order: grip, chevron, folder icon, name, count, rename, delete.
-- Subgroup contents use a small left indent and a subtle vertical guide line.
-- Sortable states use a translucent ghost, a clearly bounded chosen item, and an accent insertion marker.
-- Use approximately 150 ms movement animation.
-- Expand/collapse uses a CSS grid row transition instead of the `hidden` attribute.
-- Empty subgroup content remains compact but keeps a usable drop target while dragging.
-- Respect `prefers-reduced-motion` by disabling movement and folding animation.
+- 面板保持紧凑、安静并适配酒馆主题，不把分组做成厚重的大卡片。
+- 边框、正文、强调色和半透明背景统一使用 SillyTavern 主题变量。
+- 人设行继续保留头像、名称、标题、绑定状态、复制和移出分支操作。
+- 删除分组 `<select>` 以及相关移动端样式。
+- 分组标题从左到右为：拖拽柄、折叠箭头、文件夹图标、组名、数量、重命名、删除。
+- 组内人设使用轻微缩进和细竖线表达层级。
+- 拖动时显示半透明拖拽影子、清晰的当前项轮廓和强调色插入标记。
+- 排序位移动画约为 150 毫秒。
+- 展开与收纳使用 CSS 网格行过渡，不再通过 `hidden` 属性瞬间切换。
+- 空分组平时保持紧凑，拖动期间仍提供足够大的接收区域。
+- 遵循 `prefers-reduced-motion`，在用户要求减少动画时关闭排序和折叠动画。
 
-## Drag Engine
+## 拖拽引擎
 
-Use SortableJS as a direct runtime dependency. It is preferred over expanding the current hand-written HTML5 and touch implementations because this feature requires nested cross-container sorting, touch fallback, auto-scroll, stable placeholders, and animation.
+将 SortableJS 作为直接运行时依赖。相比继续扩展现有手写 HTML5 拖拽和触屏逻辑，本次功能涉及嵌套容器、跨容器排序、触屏回退、自动滚动、稳定占位和动画，使用成熟库的可靠性更高。
 
-The panel owns:
+面板维护以下实例：
 
-- One root Sortable instance for root personas and subgroup wrappers.
-- One child Sortable instance for each subgroup's persona container.
-- A collection of live instances that is destroyed before the panel is rebuilt.
+- 一个顶层 Sortable 实例，管理顶层人设和分组容器。
+- 每个具名分组各有一个子级 Sortable 实例，管理组内人设。
+- 所有活动实例统一记录，在面板重建前全部销毁，避免重复监听。
 
-All containers share one Sortable group. `onMove` enforces item-type restrictions:
+所有容器使用同一个 Sortable 分组，并通过 `onMove` 限制元素类型：
 
-- Persona items may enter root or subgroup containers.
-- Subgroup wrappers may move only in the root container.
-- A subgroup cannot occupy root index zero.
-- A move that would leave no root persona at index zero is rejected.
+- 人设可以进入顶层或任意具名分组。
+- 分组容器只能在顶层移动。
+- 分组不能占据顶层索引零。
+- 任何会导致顶层第一项不再是人设的移动都会被拒绝。
 
-Recommended behavior settings are `animation: 150`, a dedicated handle, touch fallback on `body`, vertical direction, auto-scroll, and a nonzero empty insertion threshold. Exact thresholds should be tuned during browser verification rather than exposed as user settings.
+推荐参数包括：`animation: 150`、独立拖拽柄、挂载到 `body` 的触屏回退、垂直排序、自动滚动以及非零的空容器接收阈值。具体阈值在浏览器实测时调整，不作为用户设置暴露。
 
-## Persisted Data
+## 持久化数据
 
-Extend `GroupSettings` with a root layout map:
+为 `GroupSettings` 增加顶层布局映射：
 
 ```ts
 type BranchLayoutItem =
@@ -128,13 +130,13 @@ type BranchLayoutItem =
 branchLayouts: Record<string, BranchLayoutItem[]>;
 ```
 
-The map key remains the current entry persona ID for compatibility with the existing branch ownership model. The layout includes the entry persona as its first item. Existing `subgroups[parentId][].personaIds` remains authoritative for subgroup membership and subgroup-internal order.
+为了兼容现有分支归属模型，映射键继续使用当前入口人设 ID。布局第一项包含入口人设本身。现有 `subgroups[parentId][].personaIds` 继续作为组内成员与组内顺序的唯一数据来源。
 
-`manualGroups[parentId]` continues to contain every branch persona except the current entry. Its order is synchronized to a depth-first flattening of the visual layout so legacy operations and a later subgroup deletion retain intuitive ordering.
+`manualGroups[parentId]` 继续包含除入口外的全部分支人设。其顺序同步为视觉布局的深度优先展开顺序，使旧功能和后续删除分组时仍能得到符合直觉的顺序。
 
-## Atomic Snapshot Update
+## 原子快照更新
 
-Do not compose a drop from separate `promoteToParent`, `movePersonaToSubgroup`, and `reorderChild` saves. At the end of a drag, serialize the complete visible layout:
+一次拖放不能通过分别调用 `promoteToParent`、`movePersonaToSubgroup` 和 `reorderChild` 并多次保存来完成。拖动结束后，应读取完整界面布局并形成一次快照：
 
 ```ts
 interface BranchLayoutSnapshot {
@@ -143,110 +145,110 @@ interface BranchLayoutSnapshot {
 }
 ```
 
-The manager applies the snapshot in one transaction:
+管理器在一个事务中应用快照：
 
-1. Resolve all valid branch personas and subgroup IDs.
-2. Reject unknown, missing, or duplicate IDs.
-3. Reject a root whose first item is not a persona.
-4. Reject an entry persona that also occurs inside a subgroup.
-5. Determine the new entry from `root[0]`.
-6. Re-key branch-owned settings when the entry changed.
-7. Store root layout and subgroup member order under the new entry ID.
-8. Rebuild `manualGroups[newEntryId]` from the flattened visual order, excluding the entry.
-9. Invalidate effective-group caches.
-10. Call the save callback exactly once.
+1. 获取当前分支中全部有效人设 ID 与分组 ID。
+2. 拒绝未知、缺失或重复的 ID。
+3. 拒绝第一项不是人设的顶层布局。
+4. 拒绝入口人设同时出现在任一分组中。
+5. 使用 `root[0]` 确定新入口。
+6. 入口发生变化时，迁移所有以旧入口为键的分支设置。
+7. 在新入口 ID 下保存顶层布局和各组成员顺序。
+8. 按视觉展开顺序重建 `manualGroups[newEntryId]`，并排除入口人设。
+9. 清除有效分组缓存。
+10. 整个操作只调用一次保存回调。
 
-If validation fails, no settings change. The panel is rerendered from the last valid manager state and shows a short warning.
+若校验失败，设置完全不变。面板从管理器最后一次有效状态重新渲染，并显示简短警告。
 
-For a branch that exists only through automatic grouping, the first manual drag materializes the current effective members into `manualGroups` so the user's explicit order remains stable. Automatic grouping preferences remain enabled.
+如果分支完全来自自动归类，用户第一次手动拖动时，将当前有效成员实体化为 `manualGroups`，从而稳定保存用户明确指定的顺序；自动归类偏好仍保持开启。
 
-## Migration And Compatibility
+## 迁移与兼容
 
-No eager destructive migration is required.
+不执行立即且破坏性的迁移。
 
-- Missing `branchLayouts` defaults to `{}`.
-- For a legacy branch without a stored layout, derive the 3.1.1 appearance: current parent persona, ungrouped children, then named subgroups.
-- Persist the derived layout only after an explicit layout-changing action.
-- Existing subgroup IDs, names, membership, collapsed state, copy behavior, and binding behavior remain valid.
-- Keep the legacy `ungroupedCollapsed` setting readable during this release for rollback compatibility, but do not render or mutate an ungrouped fold control.
+- 缺少 `branchLayouts` 时默认补为 `{}`。
+- 旧分支没有已保存布局时，按 3.1.1 的显示顺序即时推导：当前入口、普通成员、具名分组。
+- 只有用户执行会改变布局的操作后，才持久化推导出的布局。
+- 现有分组 ID、组名、成员关系、折叠状态、复制行为和绑定行为继续有效。
+- 3.2.0 仍读取旧的 `ungroupedCollapsed` 字段以保证回退兼容，但不再渲染或修改“未分组折叠”控件。
 
-## Lifecycle Rules
+## 生命周期规则
 
-### Create Subgroup
+### 新建分组
 
-Append the empty subgroup node to the root layout. Enter rename mode as today.
+将空分组节点追加到顶层布局末尾，并沿用当前逻辑立即进入重命名状态。
 
-### Delete Subgroup
+### 删除分组
 
-Replace the subgroup node at its current root position with persona nodes for its members, preserving subgroup order. This avoids moving released personas to an unrelated part of the list.
+在该分组原来的顶层位置，用其成员对应的人设节点替换分组节点，并保持原组内顺序。成员不会统一跳到列表顶部或其他无关位置。
 
-### Duplicate Persona
+### 复制人设
 
-- If the source is a root persona, insert the copy immediately after it at the root.
-- If the source is inside a subgroup, insert the copy immediately after it in that subgroup.
-- Do not copy character, chat, or group bindings.
+- 源人设位于顶层时，副本紧跟源人设插入顶层。
+- 源人设位于组内时，副本紧跟源人设插入同一分组。
+- 不复制角色、聊天或群组绑定。
 
-### Delete Persona
+### 删除人设
 
-Remove stale persona references from root layouts and subgroup membership. If the deleted persona was the entry, promote the first remaining root persona. If no root persona remains but subgroup members exist, move the first persona from the earliest subgroup to the first root slot and make it the entry.
+从顶层布局和分组成员中清除失效引用。若删除的是入口人设，则提升剩余的第一个顶层人设；若顶层已没有其他人设但分组中仍有成员，则从最靠前的分组取出第一个人设，放到顶层第一位并作为新入口。
 
-### Disband Or Reset
+### 解散与重置
 
-Remove the associated layout state together with existing branch and subgroup state.
+删除现有分支和分组状态时，同时删除对应布局数据。
 
-### Promote And Relink
+### 提升与重新关联
 
-Existing explicit promotion and relinking operations must transfer or clean layout state with the rest of branch-owned settings. A persona moved to another branch cannot remain referenced by the old layout.
+现有明确的提升主卡和重新关联操作，需要与其他分支设置一起迁移或清理布局状态。移动到其他分支的人设不能继续残留在旧布局中。
 
-## Error Handling
+## 错误处理
 
-- Invalid Sortable snapshots are rejected atomically.
-- Missing DOM IDs cause a rerender rather than partial persistence.
-- Sortable instances are destroyed before panel replacement to prevent duplicate handlers.
-- Auto-expand timers and drag-state classes are cleared on drag end, cancellation, panel rerender, and extension disable.
-- Deleting or changing a subgroup while dragging is prevented by the active drag state.
+- 无效的 Sortable 快照必须原子拒绝。
+- DOM 中缺少必要 ID 时重新渲染，不允许保存部分状态。
+- 面板替换前销毁所有 Sortable 实例，防止重复事件处理。
+- 拖动结束、取消、面板重绘或插件停用时，清除自动展开计时器和全部拖动态样式。
+- 拖动进行期间暂时禁止删除或修改分组，避免界面与快照结构同时变化。
 
-## Testing
+## 测试范围
 
-Manager tests must cover:
+管理器测试必须覆盖：
 
-1. Legacy layout derivation.
-2. Flat root reorder with no named subgroups.
-3. Root persona and subgroup mixed ordering.
-4. Persona move from root into a subgroup.
-5. Persona move between subgroups.
-6. Persona move from subgroup back to root.
-7. Subgroup reorder among root personas.
-8. Entry persona replacement and state re-keying.
-9. Rejection of subgroup-at-first, nested subgroup, duplicate, missing, and unknown IDs.
-10. Exactly one save for a valid snapshot and zero saves for an invalid snapshot.
-11. Subgroup deletion expanding members at the former subgroup position.
-12. Copy placement at root and inside a subgroup.
-13. Cleanup after persona deletion, relink, disband, reset, and entry deletion.
-14. Compatibility with automatic groups after the first explicit drag.
+1. 旧数据布局推导。
+2. 没有具名分组时的平铺排序。
+3. 顶层人设与分组混合排序。
+4. 人设从顶层拖入分组。
+5. 人设在两个分组之间移动。
+6. 人设从分组拖回顶层。
+7. 分组在顶层人设之间排序。
+8. 更换入口人设以及全部分支设置迁移。
+9. 拒绝分组占据第一位、分组嵌套、重复、缺失和未知 ID。
+10. 有效快照只保存一次，无效快照不保存。
+11. 删除分组后，成员在分组原位置展开。
+12. 顶层与组内复制人设的插入位置。
+13. 删除人设、重新关联、解散、重置和删除入口后的清理。
+14. 自动分支在首次明确拖动后的兼容行为。
 
-Presentation tests must verify that the select control and `主卡` badge are absent, Sortable data attributes are present, and header actions do not trigger folding.
+界面契约测试必须确认：分组选框和“主卡”文字徽标已移除、Sortable 所需数据属性存在、分组标题中的操作按钮不会触发折叠。
 
-Manual browser verification must cover desktop mouse, touch emulation, narrow mobile width, auto-scroll, empty groups, collapsed-group hover expansion, reduced motion, repeated entry changes, and SillyTavern persona switching while a non-entry branch member is active.
+浏览器人工验收必须覆盖：桌面鼠标、触屏模拟、窄屏移动端、边缘自动滚动、空分组、折叠组悬停展开、减少动画模式、连续更换入口，以及当前使用非入口成员时的 SillyTavern 人设切换。
 
-## Versioning And Release
+## 版本与发布
 
-- Develop on an isolated `codex/` branch from `source` 3.1.1.
-- Use separate commits for data model/tests, Sortable integration, folding/visual polish, lifecycle compatibility, and release artifacts.
-- Release as 3.2.0 because this changes the branch interaction model and adds persisted layout data.
-- Run Vitest, ESLint, production Webpack build, ZIP packaging, ZIP content verification, and SHA-256 verification.
-- Update `source` with full development files.
-- Update `main` with only `LICENSE`, `README.md`, `dist/index.js`, `manifest.json`, and `style.css`.
-- Keep the ZIP limited to `persona-collapse/manifest.json`, `persona-collapse/style.css`, and `persona-collapse/dist/index.js`.
+- 从 `source` 3.1.1 建立独立 `codex/` 开发分支。
+- 数据模型与测试、Sortable 接入、折叠与视觉优化、生命周期兼容、发布产物分别提交。
+- 由于交互模型发生变化并新增持久化布局数据，发布版本定为 3.2.0。
+- 运行 Vitest、ESLint、Webpack 生产构建、ZIP 打包、ZIP 文件清单检查和 SHA-256 校验。
+- `source` 更新完整开发文件。
+- `main` 只更新 `LICENSE`、`README.md`、`dist/index.js`、`manifest.json` 和 `style.css`。
+- ZIP 继续只包含 `persona-collapse/manifest.json`、`persona-collapse/style.css` 和 `persona-collapse/dist/index.js`。
 
-## Reference Decisions
+## 参考决策
 
-The compact folder header, full-header fold toggle, 150 ms sorting animation, touch fallback, and delayed hover expansion are informed by the local JS-Slash-Runner folder implementation. Persona Collapse will use equivalent interaction principles in its existing vanilla TypeScript architecture rather than copying Vue components or introducing Vue at runtime.
+紧凑文件夹标题、整条标题折叠、约 150 毫秒排序动画、触屏回退和悬停延迟展开，参考了本地 JS-Slash-Runner 的文件夹交互。人设折叠插件只借鉴这些交互原则，并继续使用现有原生 TypeScript 架构，不复制其 Vue 组件，也不在运行时引入 Vue。
 
-## Non-Goals
+## 本版本不包含
 
-- Nested named subgroups.
-- Dragging a branch into another branch from this panel.
-- A synthetic non-persona tile in SillyTavern's native persona list.
-- Replacing the entire native persona manager.
-- User-configurable drag thresholds, animation duration, or subgroup colors in this release.
+- 具名分组嵌套。
+- 在本面板中把整个人设分支拖入另一个分支。
+- 在 SillyTavern 左侧列表中创建非人设的虚拟分组卡片。
+- 替换整个原生人设管理器。
+- 向用户开放拖拽阈值、动画时长或分组颜色配置。
