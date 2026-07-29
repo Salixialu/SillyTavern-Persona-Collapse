@@ -109,8 +109,10 @@ describe('GroupManager legacy branch layout', () => {
     layout.root.splice(1, 1);
     layout.root[0].id = 'mutated';
     layout.root.push({ type: 'persona', id: 'new' });
+    layout.subgroupMembers.warm.splice(0, 1);
 
     expect(manager.getSettings().branchLayouts.parent).toEqual(originalStored);
+    expect(manager.getSettings().subgroups.parent[0].personaIds).toEqual(['b']);
     expect(save).not.toHaveBeenCalled();
   });
 
