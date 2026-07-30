@@ -516,6 +516,7 @@ body.square-avatars .cp2-picker-avatar {
 }
 .cp2-manager-toolbar {
   display: flex;
+  gap: 6px;
   justify-content: flex-end;
   margin-bottom: 6px;
 }
@@ -557,8 +558,7 @@ body.square-avatars .cp2-picker-avatar {
   border-radius: 6px;
   background: var(--black10a);
 }
-.cp2-manager-pane-title,
-.cp2-manager-pane-footer {
+.cp2-manager-pane-title {
   padding: 8px;
   background: var(--black20a);
 }
@@ -566,9 +566,6 @@ body.square-avatars .cp2-picker-avatar {
   font-weight: 600;
   text-align: center;
   border-bottom: 1px solid var(--SmartThemeBorderColor);
-}
-.cp2-manager-pane-footer {
-  border-top: 1px solid var(--SmartThemeBorderColor);
 }
 .cp2-manager-list {
   flex: 1;
@@ -585,7 +582,7 @@ body.square-avatars .cp2-picker-avatar {
   opacity: 0.5;
 }
 .cp2-manager-disband {
-  width: 100%;
+  width: auto;
   margin: 0;
   color: var(--warning-color, #d35f5f);
 }
