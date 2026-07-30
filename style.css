@@ -294,6 +294,10 @@
   border-radius: 6px;
   background: rgba(var(--SmartThemeQuoteColorRGB, 52, 152, 219), 0.08);
 }
+.cp2-subgroup.cp2-drop-target {
+  border-color: var(--SmartThemeQuoteColor);
+  background: rgba(var(--SmartThemeQuoteColorRGB, 52, 152, 219), 0.1);
+}
 .cp2-subgroup-delete:hover {
   color: var(--warning-color, #d35f5f);
   border-color: var(--warning-color, #d35f5f);
@@ -348,6 +352,15 @@ body.square-avatars .cp2-variant-avatar {
 }
 .cp2-sort-chosen {
   outline: 1px solid var(--SmartThemeQuoteColor);
+}
+.cp2-manual-drop-indicator {
+  position: fixed;
+  z-index: 50000;
+  height: 2px;
+  pointer-events: none;
+  border-radius: 999px;
+  background: var(--SmartThemeQuoteColor);
+  box-shadow: 0 0 0 1px rgba(var(--SmartThemeQuoteColorRGB, 52, 152, 219), 0.2);
 }
 .cp2-entry-indicator {
   width: 24px;
@@ -487,6 +500,94 @@ body.square-avatars .cp2-picker-avatar {
 }
 .cp2-picker-item.selected .cp2-picker-check {
   opacity: 1;
+}
+.cp2-name-dialog {
+  padding: 4px;
+}
+.cp2-name-dialog-input {
+  width: 100%;
+  margin: 0;
+}
+.cp2-manager-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 6px;
+}
+.cp2-manager-branch {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cp2-manager-persona-item {
+  cursor: default;
+}
+.cp2-manager-parent {
+  background: rgba(var(--SmartThemeQuoteColorRGB, 52, 152, 219), 0.15);
+  border-color: var(--SmartThemeQuoteColor, #3498db);
+}
+.cp2-manager-entry-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.78em;
+  opacity: 0.7;
+  white-space: nowrap;
+}
+.cp2-manager-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.cp2-manager-item-actions .menu_button {
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  padding: 0;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.cp2-mgr-subgroup-select {
+  width: 104px;
+  min-width: 86px;
+  height: 28px;
+  margin: 0;
+  padding: 2px 6px;
+  font-size: 0.82em;
+}
+.cp2-manager-subgroup {
+  border: 1px solid var(--SmartThemeBorderColor);
+  border-radius: 6px;
+  background: var(--black20a);
+  overflow: hidden;
+}
+.cp2-manager-subgroup-header {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 6px;
+  background: var(--black20a);
+}
+.cp2-manager-subgroup-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.86em;
+  font-weight: 600;
+}
+.cp2-manager-subgroup-items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 6px 6px 16px;
+}
+.cp2-manager-subgroup.is-collapsed .cp2-manager-subgroup-items {
+  display: none;
 }
 
 /* ====== 角色绑定头像 ====== */
