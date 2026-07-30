@@ -29,9 +29,15 @@ describe('persona branch panel rendering', () => {
     expect(panelSource).toContain('cp2-mgr-create-subgroup');
     expect(panelSource).toContain('cp2-mgr-move-btn');
     expect(panelSource).toContain('cp2-manager-subgroup');
-    expect(panelSource).toContain('showMovePersonaMenu');
+    expect(panelSource).toContain('async function promptMovePersonaDestination');
+    expect(panelSource).toContain('const subgroupId = await promptMovePersonaDestination');
     expect(panelSource).toContain('manager.movePersonaToSubgroup(currentParentId, id, subgroupId, children)');
     expect(panelSource).not.toContain('cp2-mgr-subgroup-select');
+  });
+
+  it('keeps both manager lists independently scrollable', () => {
+    expect(panelSource).toContain('cp2-manager-list');
+    expect(panelSource).toContain('cp2-manager-columns');
   });
 
   it('deletes a subgroup only after its confirmation popup resolves', () => {

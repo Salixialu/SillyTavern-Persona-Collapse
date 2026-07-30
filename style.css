@@ -539,7 +539,8 @@ body.square-avatars .cp2-picker-avatar {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 24px minmax(0, 1fr);
   gap: 8px;
-  min-height: 350px;
+  height: min(350px, 52vh);
+  min-height: 0;
 }
 .cp2-manager-pane {
   min-width: 0;
@@ -565,8 +566,11 @@ body.square-avatars .cp2-picker-avatar {
 }
 .cp2-manager-list {
   flex: 1;
+  min-height: 0;
   max-height: none;
   padding: 6px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .cp2-manager-transfer-icon {
   display: flex;
@@ -615,24 +619,8 @@ body.square-avatars .cp2-picker-avatar {
   align-items: center;
   justify-content: center;
 }
-.cp2-manager-move-menu {
-  position: fixed;
-  z-index: 50001;
-  display: flex;
-  min-width: 132px;
-  max-width: min(240px, calc(100vw - 16px));
-  flex-direction: column;
-  gap: 2px;
-  padding: 4px;
-  border: 1px solid var(--SmartThemeBorderColor);
-  border-radius: 6px;
-  background: var(--SmartThemeBlurTintColor, var(--black30a));
-  box-shadow: 0 6px 18px var(--black50a);
-}
-.cp2-manager-move-option {
-  min-height: 30px;
-  margin: 0;
-  text-align: left;
+.cp2-manager-move-dialog .text_pole {
+  width: 100%;
 }
 .cp2-manager-subgroup {
   border: 1px solid var(--SmartThemeBorderColor);

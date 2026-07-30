@@ -434,51 +434,30 @@ async function confirmSubgroupDeletion(subgroupName: string): Promise<boolean> {
   return (await popup.show()) !== null;
 }
 
-let managerMoveMenu: HTMLElement | null = null;
-let closeManagerMoveMenu: (() => void) | null = null;
-
-function showMovePersonaMenu(
-  anchor: HTMLElement,
+async function promptMovePersonaDestination(
   currentSubgroupId: string | null,
   subgroups: Array<{ id: string; name: string }>,
-  onMove: (subgroupId: string | null) => void,
-): void {
-  closeManagerMoveMenu?.();
-
-  const menu = document.createElement('div');
-  menu.className = 'cp2-manager-move-menu';
+): Promise<string | null | undefined> {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'cp2-manager-move-dialog';
+  const select = document.createElement('select');
+  select.className = 'text_pole';
   const destinations: Array<{ id: string | null; name: string }> = [{ id: null, name: '顶层' }, ...subgroups];
   for (const destination of destinations) {
-    const option = document.createElement('button');
-    option.type = 'button';
-    option.className = 'menu_button cp2-manager-move-option';
+    const option = document.createElement('option');
+    option.value = destination.id ?? '';
     option.textContent = destination.name;
     option.disabled = destination.id === currentSubgroupId;
-    option.addEventListener('click', event => {
-      event.stopPropagation();
-      closeManagerMoveMenu?.();
-      onMove(destination.id);
-    });
-    menu.appendChild(option);
+    select.appendChild(option);
   }
+  wrapper.appendChild(select);
 
-  document.body.appendChild(menu);
-  const rect = anchor.getBoundingClientRect();
-  menu.style.left = `${Math.max(8, rect.right - menu.offsetWidth)}px`;
-  menu.style.top = `${rect.bottom + 4}px`;
-  managerMoveMenu = menu;
-
-  const dismiss = (event: PointerEvent): void => {
-    if (event.target instanceof Node && (menu.contains(event.target) || anchor.contains(event.target))) return;
-    closeManagerMoveMenu?.();
-  };
-  closeManagerMoveMenu = () => {
-    document.removeEventListener('pointerdown', dismiss, true);
-    menu.remove();
-    if (managerMoveMenu === menu) managerMoveMenu = null;
-    closeManagerMoveMenu = null;
-  };
-  setTimeout(() => document.addEventListener('pointerdown', dismiss, true), 0);
+  const popup = new Popup(wrapper, POPUP_TYPE.TEXT, '', {
+    okButton: tUi('personaCollapse.move', '移动'),
+    cancelButton: tUi('personaCollapse.cancel', '取消'),
+  });
+  const result = await popup.show();
+  return result === null ? undefined : (select.value || null);
 }
 
 function renderVariantsPanel(force = false, currentIdOverride: string | null = null): void {
@@ -1061,14 +1040,14 @@ function openGroupManager(initialParentId: string): void {
     });
 
     rightPane.querySelectorAll('.cp2-mgr-move-btn').forEach(el => {
-      el.addEventListener('click', e => {
+      el.addEventListener('click', async e => {
         e.stopPropagation();
         const id = (el as HTMLElement).dataset.id;
         if (!id) return;
         const currentSubgroupId = (el as HTMLElement).dataset.subgroupId || null;
-        showMovePersonaMenu(el as HTMLElement, currentSubgroupId, subgroupOptions, subgroupId => {
-          if (manager.movePersonaToSubgroup(currentParentId, id, subgroupId, children)) renderPanes();
-        });
+        const subgroupId = await promptMovePersonaDestination(currentSubgroupId, subgroupOptions);
+        if (subgroupId === undefined) return;
+        if (manager.movePersonaToSubgroup(currentParentId, id, subgroupId, children)) renderPanes();
       });
     });
 
