@@ -21,7 +21,16 @@ describe('persona branch panel rendering', () => {
     expect(panelSource).toContain('async function promptSubgroupName');
     expect(panelSource).toContain('POPUP_TYPE.TEXT');
     expect(panelSource).toContain('manager.createSubgroup(parentId, name)');
+    expect(panelSource).toContain('manager.createSubgroup(currentParentId, name)');
     expect(panelSource).not.toContain('editingSubgroupId = manager.createSubgroup(parentId).id');
+  });
+
+  it('renders stable subgroup controls in the manager popup', () => {
+    expect(panelSource).toContain('cp2-mgr-create-subgroup');
+    expect(panelSource).toContain('cp2-mgr-subgroup-select');
+    expect(panelSource).toContain('cp2-manager-subgroup');
+    expect(panelSource).toContain('manager.movePersonaToSubgroup(currentParentId, id, subgroupId, children)');
+    expect(panelSource).toContain('manager.movePersonaToSubgroup(currentParentId, id, null, children)');
   });
 
   it('skips unchanged polling renders before rebuilding branch layout state', () => {
