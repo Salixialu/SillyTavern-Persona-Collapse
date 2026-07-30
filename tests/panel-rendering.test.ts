@@ -17,6 +17,13 @@ describe('persona branch panel rendering', () => {
     expect(panelSource).not.toContain("tUi('personaCollapse.removeFromSubgroup', '移出分组')");
   });
 
+  it('prompts for subgroup names before creating a subgroup', () => {
+    expect(panelSource).toContain('async function promptSubgroupName');
+    expect(panelSource).toContain('POPUP_TYPE.TEXT');
+    expect(panelSource).toContain('manager.createSubgroup(parentId, name)');
+    expect(panelSource).not.toContain('editingSubgroupId = manager.createSubgroup(parentId).id');
+  });
+
   it('skips unchanged polling renders before rebuilding branch layout state', () => {
     expect(panelSource).toContain('let variantsPanelDirty = true;');
     expect(panelSource).toContain('!variantsPanelDirty && currentId === lastPanelPersonaId');

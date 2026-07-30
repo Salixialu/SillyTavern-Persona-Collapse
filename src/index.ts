@@ -398,6 +398,30 @@ let lastPanelGroupKey: string | null = null;
 let editingSubgroupId: string | null = null;
 let variantsPanelDirty = true;
 
+async function promptSubgroupName(initialName = ''): Promise<string | null> {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'cp2-name-dialog';
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'text_pole cp2-name-dialog-input';
+  input.value = initialName;
+  input.placeholder = tUi('personaCollapse.subgroupNamePlaceholder', '输入分组名称');
+  wrapper.appendChild(input);
+
+  const popup = new Popup(wrapper, POPUP_TYPE.TEXT, '', {
+    okButton: tUi('personaCollapse.create', '创建'),
+    cancelButton: tUi('personaCollapse.cancel', '取消'),
+  });
+
+  setTimeout(() => input.focus(), 0);
+  const result = await popup.show();
+  if (result === null) return null;
+
+  const name = input.value.trim();
+  return name.length > 0 ? name : null;
+}
+
 function renderVariantsPanel(force = false, currentIdOverride: string | null = null): void {
   if (branchSortableDragging && !force) return;
   const selectedEl = document.querySelector('#user_avatar_block .avatar-container.selected');
@@ -509,10 +533,12 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
     openGroupManager(parentId);
   });
 
-  panel.querySelector('#cp2-create-subgroup')?.addEventListener('click', e => {
+  panel.querySelector('#cp2-create-subgroup')?.addEventListener('click', async e => {
     e.stopPropagation();
-    editingSubgroupId = manager.createSubgroup(parentId).id;
-    renderVariantsPanel(true);
+    const name = await promptSubgroupName();
+    if (!name) return;
+    manager.createSubgroup(parentId, name);
+    renderVariantsPanel(true, currentId);
   });
 
   // 渲染成员列表
