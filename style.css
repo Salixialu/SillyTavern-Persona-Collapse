@@ -279,7 +279,7 @@
   opacity: 0;
 }
 .cp2-subgroup-items {
-  min-height: 0;
+  min-height: 16px;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -289,7 +289,10 @@
   border-left: 1px solid var(--SmartThemeBorderColor);
 }
 .cp2-drag-active .cp2-subgroup-items:empty {
-  min-height: 34px;
+  min-height: 56px;
+  border: 1px dashed var(--SmartThemeQuoteColor);
+  border-radius: 6px;
+  background: rgba(var(--SmartThemeQuoteColorRGB, 52, 152, 219), 0.08);
 }
 .cp2-subgroup-delete:hover {
   color: var(--warning-color, #d35f5f);
