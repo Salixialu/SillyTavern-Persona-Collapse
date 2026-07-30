@@ -396,6 +396,7 @@ function renderAvatarBlock(): void {
 let lastPanelPersonaId: string | null = null;
 let lastPanelGroupKey: string | null = null;
 let editingSubgroupId: string | null = null;
+let variantsPanelDirty = true;
 
 function renderVariantsPanel(force = false, currentIdOverride: string | null = null): void {
   if (branchSortableDragging && !force) return;
@@ -408,6 +409,7 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
 
   // --- 确保面板容器存在 ---
   let panel = document.getElementById('cp2-variants-panel');
+  const hadPanel = !!panel;
   if (!panel) {
     const area = document.querySelector('.persona_management_current_persona');
     if (!area) return;
@@ -421,12 +423,15 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
     }
   }
 
+  if (!force && hadPanel && !variantsPanelDirty && currentId === lastPanelPersonaId) return;
+
   const settings = manager?.getSettings();
   if (!settings?.enabled || !currentId) {
     teardownBranchSortables();
     panel.style.display = 'none';
     lastPanelPersonaId = null;
     lastPanelGroupKey = null;
+    variantsPanelDirty = false;
     return;
   }
 
@@ -439,6 +444,7 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
 
   if (children.length === 0) {
     teardownBranchSortables();
+    if (!force && currentId === lastPanelPersonaId && lastPanelGroupKey === null && !variantsPanelDirty) return;
     // 独立人设：只显示管理按钮，方便快速组建分支
     panel.style.display = 'block';
     panel.innerHTML = `
@@ -456,6 +462,7 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
 
     lastPanelPersonaId = currentId;
     lastPanelGroupKey = null;
+    variantsPanelDirty = false;
     return;
   }
 
@@ -794,6 +801,7 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
 
   lastPanelPersonaId = currentId;
   lastPanelGroupKey = groupKey;
+  variantsPanelDirty = false;
 }
 
 /** 弹出批量管理面板：双栏 UI 管理分组及主卡 */
@@ -1451,6 +1459,7 @@ if (typeof jQuery !== 'undefined') {
     const rawSettings = (extension_settings as any)[SETTINGS_KEY];
     manager = new GroupManager(rawSettings, () => {
       (extension_settings as any)[SETTINGS_KEY] = manager.getSettings();
+      variantsPanelDirty = true;
       saveSettingsDebounced();
     });
     (extension_settings as any)[SETTINGS_KEY] = manager.getSettings();
@@ -1469,6 +1478,7 @@ if (typeof jQuery !== 'undefined') {
     });
 
     eventSource.on(event_types.SETTINGS_UPDATED, () => {
+      variantsPanelDirty = true;
       scheduleRender();
       renderVariantsPanel(true);
     });

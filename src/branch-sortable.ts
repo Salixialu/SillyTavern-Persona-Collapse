@@ -69,6 +69,16 @@ function wouldMakeRootStartWithSubgroup(
   if (event.to !== root) return false;
 
   const rootItems = getDirectChildren(root, ROOT_ITEM_SELECTOR).filter(item => item !== dragged);
+  if (rootItems.length === 0) return dragged.dataset.layoutType === 'subgroup';
+
+  const firstRootItem = rootItems[0];
+  if (
+    firstRootItem?.dataset.layoutType === 'persona'
+    && event.related !== firstRootItem
+  ) {
+    return false;
+  }
+
   const related = isHTMLElement(event.related) && event.related.matches(ROOT_ITEM_SELECTOR)
     ? event.related
     : null;

@@ -15,4 +15,11 @@ describe('persona branch panel rendering', () => {
     expect(panelSource).not.toContain('cp2-subgroup-select');
     expect(panelSource).not.toContain("tUi('personaCollapse.removeFromSubgroup', '移出分组')");
   });
+
+  it('skips unchanged polling renders before rebuilding branch layout state', () => {
+    expect(panelSource).toContain('let variantsPanelDirty = true;');
+    expect(panelSource).toContain('!variantsPanelDirty && currentId === lastPanelPersonaId');
+    expect(panelSource).toContain('variantsPanelDirty = true;');
+    expect(panelSource).toContain('variantsPanelDirty = false;');
+  });
 });
