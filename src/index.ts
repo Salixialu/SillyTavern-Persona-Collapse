@@ -422,6 +422,65 @@ async function promptSubgroupName(initialName = ''): Promise<string | null> {
   return name.length > 0 ? name : null;
 }
 
+async function confirmSubgroupDeletion(subgroupName: string): Promise<boolean> {
+  const message = tUi(
+    'personaCollapse.deleteSubgroupConfirm',
+    `删除“${subgroupName}”分组？其中人设将移回未分组。`,
+  );
+  const popup = new Popup(`<p>${escapeHtml(message)}</p>`, POPUP_TYPE.CONFIRM, '', {
+    okButton: tUi('personaCollapse.delete', '删除'),
+    cancelButton: tUi('personaCollapse.cancel', '取消'),
+  });
+  return (await popup.show()) !== null;
+}
+
+let managerMoveMenu: HTMLElement | null = null;
+let closeManagerMoveMenu: (() => void) | null = null;
+
+function showMovePersonaMenu(
+  anchor: HTMLElement,
+  currentSubgroupId: string | null,
+  subgroups: Array<{ id: string; name: string }>,
+  onMove: (subgroupId: string | null) => void,
+): void {
+  closeManagerMoveMenu?.();
+
+  const menu = document.createElement('div');
+  menu.className = 'cp2-manager-move-menu';
+  const destinations: Array<{ id: string | null; name: string }> = [{ id: null, name: '顶层' }, ...subgroups];
+  for (const destination of destinations) {
+    const option = document.createElement('button');
+    option.type = 'button';
+    option.className = 'menu_button cp2-manager-move-option';
+    option.textContent = destination.name;
+    option.disabled = destination.id === currentSubgroupId;
+    option.addEventListener('click', event => {
+      event.stopPropagation();
+      closeManagerMoveMenu?.();
+      onMove(destination.id);
+    });
+    menu.appendChild(option);
+  }
+
+  document.body.appendChild(menu);
+  const rect = anchor.getBoundingClientRect();
+  menu.style.left = `${Math.max(8, rect.right - menu.offsetWidth)}px`;
+  menu.style.top = `${rect.bottom + 4}px`;
+  managerMoveMenu = menu;
+
+  const dismiss = (event: PointerEvent): void => {
+    if (event.target instanceof Node && (menu.contains(event.target) || anchor.contains(event.target))) return;
+    closeManagerMoveMenu?.();
+  };
+  closeManagerMoveMenu = () => {
+    document.removeEventListener('pointerdown', dismiss, true);
+    menu.remove();
+    if (managerMoveMenu === menu) managerMoveMenu = null;
+    closeManagerMoveMenu = null;
+  };
+  setTimeout(() => document.addEventListener('pointerdown', dismiss, true), 0);
+}
+
 function renderVariantsPanel(force = false, currentIdOverride: string | null = null): void {
   if (branchSortableDragging && !force) return;
   const selectedEl = document.querySelector('#user_avatar_block .avatar-container.selected');
@@ -751,19 +810,13 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
     remove.title = tUi('personaCollapse.deleteSubgroup', '删除分组');
     remove.setAttribute('aria-label', remove.title);
     remove.innerHTML = '<i class="fa-solid fa-trash"></i>';
-    remove.addEventListener('click', event => {
+    remove.addEventListener('click', async event => {
       event.stopPropagation();
       const groupName = subgroup?.name || groupId;
-      const message = tUi('personaCollapse.deleteSubgroupConfirm', `删除“${groupName}”分组？其中人设将移回未分组。`);
-      new Popup(`<p>${escapeHtml(message)}</p>`, POPUP_TYPE.CONFIRM, '', {
-        okButton: tUi('personaCollapse.delete', '删除'),
-        cancelButton: tUi('personaCollapse.cancel', '取消'),
-        onOk: () => {
-          manager.deleteSubgroup(parentId, groupId);
-          if (editingSubgroupId === groupId) editingSubgroupId = null;
-          renderVariantsPanel(true, currentId);
-        },
-      }).show();
+      if (!(await confirmSubgroupDeletion(groupName))) return;
+      manager.deleteSubgroup(parentId, groupId);
+      if (editingSubgroupId === groupId) editingSubgroupId = null;
+      renderVariantsPanel(true, currentId);
     });
     header.appendChild(remove);
 
@@ -808,6 +861,7 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
       });
       return true;
     },
+    onReject: () => renderVariantsPanel(true, currentId),
     onExpandSubgroup: (subgroupId, section) => {
       if (manager.setSubgroupCollapsed(parentId, subgroupId, false)) {
         section.classList.remove('is-collapsed');
@@ -848,19 +902,11 @@ function openGroupManager(initialParentId: string): void {
   ): string {
     const { isEntry = false, subgroupId = null, subgroups = [] } = options;
     const name = getPersonaName(id);
-    const rootSelected = subgroupId === null ? ' selected' : '';
-    const subgroupOptions = subgroups.map(group => `
-      <option value="${escapeHtml(group.id)}"${subgroupId === group.id ? ' selected' : ''}>${escapeHtml(group.name)}</option>
-    `).join('');
     const controls = isEntry ? `
       <span class="cp2-manager-entry-label"><i class="fa-solid fa-eye"></i> 入口</span>
     ` : `
       <button class="menu_button cp2-mgr-entry-btn" data-id="${escapeHtml(id)}" title="设为左侧列表入口"><i class="fa-solid fa-crown"></i></button>
-      ${subgroupId ? `<button class="menu_button cp2-mgr-root-btn" data-id="${escapeHtml(id)}" title="移到顶层"><i class="fa-solid fa-arrow-up"></i></button>` : ''}
-      <select class="text_pole cp2-mgr-subgroup-select" data-id="${escapeHtml(id)}" title="移动到分组">
-        <option value=""${rootSelected}>顶层</option>
-        ${subgroupOptions}
-      </select>
+      <button class="menu_button cp2-mgr-move-btn" data-id="${escapeHtml(id)}" data-subgroup-id="${escapeHtml(subgroupId || '')}" title="移动到其他位置"><i class="fa-solid fa-right-left"></i></button>
       <button class="menu_button cp2-remove-btn" data-id="${escapeHtml(id)}" title="移出分支"><i class="fa-solid fa-xmark"></i></button>
     `;
 
@@ -1014,25 +1060,15 @@ function openGroupManager(initialParentId: string): void {
       });
     });
 
-    rightPane.querySelectorAll('.cp2-mgr-root-btn').forEach(el => {
+    rightPane.querySelectorAll('.cp2-mgr-move-btn').forEach(el => {
       el.addEventListener('click', e => {
         e.stopPropagation();
         const id = (el as HTMLElement).dataset.id;
-        if (id && manager.movePersonaToSubgroup(currentParentId, id, null, children)) {
-          renderPanes();
-        }
-      });
-    });
-
-    rightPane.querySelectorAll<HTMLSelectElement>('.cp2-mgr-subgroup-select').forEach(el => {
-      el.addEventListener('change', e => {
-        e.stopPropagation();
-        const id = el.dataset.id;
         if (!id) return;
-        const subgroupId = el.value || null;
-        if (manager.movePersonaToSubgroup(currentParentId, id, subgroupId, children)) {
-          renderPanes();
-        }
+        const currentSubgroupId = (el as HTMLElement).dataset.subgroupId || null;
+        showMovePersonaMenu(el as HTMLElement, currentSubgroupId, subgroupOptions, subgroupId => {
+          if (manager.movePersonaToSubgroup(currentParentId, id, subgroupId, children)) renderPanes();
+        });
       });
     });
 
@@ -1058,19 +1094,15 @@ function openGroupManager(initialParentId: string): void {
     });
 
     rightPane.querySelectorAll('.cp2-mgr-delete-subgroup').forEach(el => {
-      el.addEventListener('click', e => {
+      el.addEventListener('click', async e => {
         e.stopPropagation();
         const subgroupId = (el as HTMLElement).dataset.subgroupId;
         if (!subgroupId) return;
         const subgroupName = subgroupById.get(subgroupId)?.name || subgroupId;
-        new Popup(`<p>${escapeHtml(`删除“${subgroupName}”分组？其中人设将移回顶层。`)}</p>`, POPUP_TYPE.CONFIRM, '', {
-          okButton: tUi('personaCollapse.delete', '删除'),
-          cancelButton: tUi('personaCollapse.cancel', '取消'),
-          onOk: () => {
-            manager.deleteSubgroup(currentParentId, subgroupId);
-            renderPanes();
-          },
-        }).show();
+        const confirmed = await confirmSubgroupDeletion(subgroupName);
+        if (!confirmed) return;
+        manager.deleteSubgroup(currentParentId, subgroupId);
+        renderPanes();
       });
     });
 
@@ -1087,30 +1119,32 @@ function openGroupManager(initialParentId: string): void {
   }
 
   const popupContent = `
-    <div style="margin-bottom: 10px; opacity: 0.8; font-size: 0.9em; text-align: left;">
+    <div class="cp2-manager-dialog">
+    <div class="cp2-manager-hint">
       <i class="fa-solid fa-users"></i> 批量管理分组。你可以将左侧的独立人设点击加入右侧，也可以在右侧一键设为主卡。
     </div>
-    <div style="display: flex; gap: 6px; margin-bottom: 10px;">
-      <input type="text" id="cp2-mgr-search" class="text_pole" placeholder="搜索独立人设..." style="flex:1;">
-      <button class="menu_button cp2-filter-btn" data-mode="all" style="flex:0;">全部</button>
-      <button class="menu_button cp2-filter-btn" data-mode="samename" style="flex:0; white-space:nowrap;">同名</button>
-      <button class="menu_button cp2-filter-btn" data-mode="samechar" style="flex:0; white-space:nowrap;">同绑定</button>
+    <div class="cp2-manager-searchbar">
+      <input type="text" id="cp2-mgr-search" class="text_pole" placeholder="搜索独立人设...">
+      <button class="menu_button cp2-filter-btn" data-mode="all">全部</button>
+      <button class="menu_button cp2-filter-btn" data-mode="samename">同名</button>
+      <button class="menu_button cp2-filter-btn" data-mode="samechar">同绑定</button>
     </div>
-    <div style="display: flex; gap: 10px; height: 350px; text-align: left;">
-      <div style="flex: 1; display: flex; flex-direction: column; border: 1px solid var(--SmartThemeBorderColor); border-radius: 8px; background: var(--black10a); overflow: hidden;">
-        <div style="padding: 8px; font-weight: bold; border-bottom: 1px solid var(--SmartThemeBorderColor); text-align: center; background: var(--black20a);">可选独立人设 (<span id="cp2-mgr-count">0</span>)</div>
-        <div id="cp2-mgr-left" class="cp2-picker-list" style="flex: 1; padding: 6px; overflow-y: auto;"></div>
+    <div class="cp2-manager-columns">
+      <div class="cp2-manager-pane">
+        <div class="cp2-manager-pane-title">可选独立人设 (<span id="cp2-mgr-count">0</span>)</div>
+        <div id="cp2-mgr-left" class="cp2-picker-list cp2-manager-list"></div>
       </div>
-      <div style="display: flex; align-items: center; font-size: 1.2em; opacity: 0.5;">
+      <div class="cp2-manager-transfer-icon">
         <i class="fa-solid fa-right-left"></i>
       </div>
-      <div style="flex: 1; display: flex; flex-direction: column; border: 1px solid var(--SmartThemeBorderColor); border-radius: 8px; background: var(--black10a); overflow: hidden;">
-        <div style="padding: 8px; font-weight: bold; border-bottom: 1px solid var(--SmartThemeBorderColor); text-align: center; background: var(--black20a);">当前分支列表</div>
-        <div id="cp2-mgr-right" class="cp2-picker-list" style="flex: 1; padding: 6px; overflow-y: auto;"></div>
-        <div style="padding: 8px; border-top: 1px solid var(--SmartThemeBorderColor); background: var(--black20a);">
-          <button id="cp2-mgr-disband" class="menu_button" style="width: 100%; color: #e74c3c; margin: 0;">一键解散该分组</button>
+      <div class="cp2-manager-pane">
+        <div class="cp2-manager-pane-title">当前分支列表</div>
+        <div id="cp2-mgr-right" class="cp2-picker-list cp2-manager-list"></div>
+        <div class="cp2-manager-pane-footer">
+          <button id="cp2-mgr-disband" class="menu_button cp2-manager-disband">一键解散该分组</button>
         </div>
       </div>
+    </div>
     </div>
   `;
 

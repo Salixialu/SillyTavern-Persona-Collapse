@@ -27,10 +27,17 @@ describe('persona branch panel rendering', () => {
 
   it('renders stable subgroup controls in the manager popup', () => {
     expect(panelSource).toContain('cp2-mgr-create-subgroup');
-    expect(panelSource).toContain('cp2-mgr-subgroup-select');
+    expect(panelSource).toContain('cp2-mgr-move-btn');
     expect(panelSource).toContain('cp2-manager-subgroup');
+    expect(panelSource).toContain('showMovePersonaMenu');
     expect(panelSource).toContain('manager.movePersonaToSubgroup(currentParentId, id, subgroupId, children)');
-    expect(panelSource).toContain('manager.movePersonaToSubgroup(currentParentId, id, null, children)');
+    expect(panelSource).not.toContain('cp2-mgr-subgroup-select');
+  });
+
+  it('deletes a subgroup only after its confirmation popup resolves', () => {
+    expect(panelSource).toContain('async function confirmSubgroupDeletion');
+    expect(panelSource).toContain('const confirmed = await confirmSubgroupDeletion(subgroupName);');
+    expect(panelSource).toContain('manager.deleteSubgroup(currentParentId, subgroupId);');
   });
 
   it('skips unchanged polling renders before rebuilding branch layout state', () => {
@@ -40,10 +47,11 @@ describe('persona branch panel rendering', () => {
     expect(panelSource).toContain('variantsPanelDirty = false;');
   });
 
-  it('keeps empty subgroup drops reachable and allows entry promotion', () => {
+  it('uses SortableJS as the only drag placement engine', () => {
     expect(panelSource).not.toContain("items.style.minHeight = '12px'");
-    expect(sortableSource).toContain('cp2-manual-drop-indicator');
-    expect(sortableSource).toContain('buildSnapshotFromPlacement');
-    expect(sortableSource).toContain('return false;');
+    expect(sortableSource).toContain('readBranchLayoutSnapshot(options.root)');
+    expect(sortableSource).not.toContain('cp2-manual-drop-indicator');
+    expect(sortableSource).not.toContain('pointermove');
+    expect(sortableSource).not.toContain('forceFallback: true');
   });
 });
