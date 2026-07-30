@@ -513,6 +513,72 @@ body.square-avatars .cp2-picker-avatar {
   justify-content: flex-end;
   margin-bottom: 6px;
 }
+.cp2-manager-dialog {
+  text-align: left;
+}
+.cp2-manager-hint {
+  margin-bottom: 10px;
+  font-size: 0.9em;
+  opacity: 0.8;
+}
+.cp2-manager-searchbar {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.cp2-manager-searchbar .text_pole {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.cp2-manager-searchbar .menu_button {
+  flex: 0 0 auto;
+  margin: 0;
+  white-space: nowrap;
+}
+.cp2-manager-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 24px minmax(0, 1fr);
+  gap: 8px;
+  min-height: 350px;
+}
+.cp2-manager-pane {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--SmartThemeBorderColor);
+  border-radius: 6px;
+  background: var(--black10a);
+}
+.cp2-manager-pane-title,
+.cp2-manager-pane-footer {
+  padding: 8px;
+  background: var(--black20a);
+}
+.cp2-manager-pane-title {
+  font-weight: 600;
+  text-align: center;
+  border-bottom: 1px solid var(--SmartThemeBorderColor);
+}
+.cp2-manager-pane-footer {
+  border-top: 1px solid var(--SmartThemeBorderColor);
+}
+.cp2-manager-list {
+  flex: 1;
+  max-height: none;
+  padding: 6px;
+}
+.cp2-manager-transfer-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.5;
+}
+.cp2-manager-disband {
+  width: 100%;
+  margin: 0;
+  color: var(--warning-color, #d35f5f);
+}
 .cp2-manager-branch {
   display: flex;
   flex-direction: column;
@@ -549,13 +615,24 @@ body.square-avatars .cp2-picker-avatar {
   align-items: center;
   justify-content: center;
 }
-.cp2-mgr-subgroup-select {
-  width: 104px;
-  min-width: 86px;
-  height: 28px;
+.cp2-manager-move-menu {
+  position: fixed;
+  z-index: 50001;
+  display: flex;
+  min-width: 132px;
+  max-width: min(240px, calc(100vw - 16px));
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid var(--SmartThemeBorderColor);
+  border-radius: 6px;
+  background: var(--SmartThemeBlurTintColor, var(--black30a));
+  box-shadow: 0 6px 18px var(--black50a);
+}
+.cp2-manager-move-option {
+  min-height: 30px;
   margin: 0;
-  padding: 2px 6px;
-  font-size: 0.82em;
+  text-align: left;
 }
 .cp2-manager-subgroup {
   border: 1px solid var(--SmartThemeBorderColor);
@@ -588,6 +665,20 @@ body.square-avatars .cp2-picker-avatar {
 }
 .cp2-manager-subgroup.is-collapsed .cp2-manager-subgroup-items {
   display: none;
+}
+
+@media (max-width: 700px) {
+  .cp2-manager-columns {
+    grid-template-columns: 1fr;
+    min-height: 0;
+    max-height: 68vh;
+  }
+  .cp2-manager-transfer-icon {
+    display: none;
+  }
+  .cp2-manager-pane {
+    min-height: 180px;
+  }
 }
 
 /* ====== 角色绑定头像 ====== */
