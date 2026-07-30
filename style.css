@@ -337,20 +337,61 @@ body.square-avatars .cp2-variant-avatar {
   border-radius: 4px;
 }
 .cp2-variant-drag-handle {
-  width: 16px;
-  margin-right: 4px;
-  opacity: 0.3;
+  width: 14px;
+  margin-left: -4px;
+  margin-right: -2px;
+  opacity: 0.42;
   cursor: grab;
   transition: opacity 0.2s;
   padding: 2px 0;
 }
 .cp2-sort-handle {
-  flex: 0 0 16px;
-  width: 16px;
+  position: relative;
+  flex: 0 0 14px;
+  width: 14px;
+  height: 32px;
   cursor: grab;
   opacity: 0.55;
   text-align: center;
-  font-size: 0.85em;
+  font-size: 0;
+}
+.cp2-sort-handle::before,
+.cp2-sort-handle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--SmartThemeBodyColor, #9aa0a6);
+  transform: translateY(-50%);
+  transition: opacity 0.15s, background-color 0.15s;
+}
+.cp2-sort-handle::before {
+  left: 3px;
+  height: 22px;
+  opacity: 0.62;
+}
+.cp2-sort-handle::after {
+  left: 8px;
+  height: 10px;
+  background: var(--cp2-drag-accent, var(--SmartThemeBodyColor, #9aa0a6));
+  opacity: 0.55;
+}
+.cp2-sort-handle:hover::before,
+.cp2-sort-handle:hover::after {
+  background: var(--SmartThemeBodyColor, #9aa0a6);
+}
+.cp2-sort-handle:hover {
+  opacity: 0.82;
+}
+.cp2-sort-handle:hover::before {
+  opacity: 0.9;
+}
+.cp2-sort-handle:hover::after {
+  background: var(--cp2-drag-accent, var(--SmartThemeBodyColor, #9aa0a6));
+}
+.cp2-sort-handle:hover::after {
+  opacity: 0.85;
 }
 .cp2-sort-handle:active {
   cursor: grabbing;
