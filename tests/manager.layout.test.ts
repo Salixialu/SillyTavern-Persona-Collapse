@@ -297,18 +297,46 @@ describe('GroupManager applyBranchLayoutSnapshot', () => {
     expect(save).toHaveBeenCalledOnce();
   });
 
-  it.each([
-    {
-      name: 'starts with a subgroup',
-      snapshot: {
-        root: [
-          { type: 'subgroup' as const, id: 'warm' },
-          { type: 'persona' as const, id: 'parent' },
-          { type: 'persona' as const, id: 'b' },
-        ],
-        subgroupMembers: { warm: ['a', 'c'] },
+  it('promotes the first remaining root persona when the entry moves into an empty subgroup', () => {
+    const save = vi.fn();
+    const manager = new GroupManager(completeSettings({
+      manualGroups: { parent: ['a', 'b'] },
+      subgroups: {
+        parent: [{ id: 'warm', name: '温柔线', personaIds: [], collapsed: false }],
       },
-    },
+      branchLayouts: {
+        parent: [
+          { type: 'persona', id: 'parent' },
+          { type: 'subgroup', id: 'warm' },
+          { type: 'persona', id: 'a' },
+          { type: 'persona', id: 'b' },
+        ],
+      },
+    }), save);
+
+    const newEntry = manager.applyBranchLayoutSnapshot('parent', {
+      root: [
+        { type: 'subgroup', id: 'warm' },
+        { type: 'persona', id: 'a' },
+        { type: 'persona', id: 'b' },
+      ],
+      subgroupMembers: { warm: ['parent'] },
+    }, ['a', 'b']);
+
+    expect(newEntry).toBe('a');
+    expect(manager.getSettings().manualGroups).toEqual({ a: ['parent', 'b'] });
+    expect(manager.getSettings().subgroups.a).toEqual([
+      { id: 'warm', name: '温柔线', personaIds: ['parent'], collapsed: false },
+    ]);
+    expect(manager.getSettings().branchLayouts.a).toEqual([
+      { type: 'persona', id: 'a' },
+      { type: 'subgroup', id: 'warm' },
+      { type: 'persona', id: 'b' },
+    ]);
+    expect(save).toHaveBeenCalledOnce();
+  });
+
+  it.each([
     {
       name: 'duplicates a persona in root',
       snapshot: {
@@ -322,13 +350,12 @@ describe('GroupManager applyBranchLayoutSnapshot', () => {
       },
     },
     {
-      name: 'misses a persona from root and subgroup members',
+      name: 'has no root persona to promote',
       snapshot: {
         root: [
-          { type: 'persona' as const, id: 'parent' },
           { type: 'subgroup' as const, id: 'warm' },
         ],
-        subgroupMembers: { warm: ['a'] },
+        subgroupMembers: { warm: ['parent', 'a', 'b', 'c'] },
       },
     },
     {

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 // Vite's raw loader exposes the file contents as a default export at test runtime.
 // eslint-disable-next-line import-x/default
 import panelSource from '../src/index.ts?raw';
+import sortableSource from '../src/branch-sortable.ts?raw';
 
 describe('persona branch panel rendering', () => {
   it('renders mixed root layouts through branch sortables', () => {
@@ -21,5 +22,10 @@ describe('persona branch panel rendering', () => {
     expect(panelSource).toContain('!variantsPanelDirty && currentId === lastPanelPersonaId');
     expect(panelSource).toContain('variantsPanelDirty = true;');
     expect(panelSource).toContain('variantsPanelDirty = false;');
+  });
+
+  it('keeps empty subgroup drops reachable and allows entry promotion', () => {
+    expect(panelSource).not.toContain("items.style.minHeight = '12px'");
+    expect(sortableSource).toContain("item !== dragged && item.dataset.layoutType === 'persona'");
   });
 });

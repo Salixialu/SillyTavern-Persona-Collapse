@@ -754,7 +754,6 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
 
     const items = document.createElement('div');
     items.className = 'cp2-subgroup-items';
-    items.style.minHeight = '12px';
     for (const memberId of memberIds) {
       items.appendChild(createPersonaItem(memberId, { subgroupId: groupId }));
     }

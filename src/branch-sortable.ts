@@ -188,6 +188,9 @@ export function mountBranchSortables(options: BranchSortableOptions): () => void
         entryPersona?.dataset.layoutType === 'persona'
         && dragged.dataset.personaId === entryPersona.dataset.personaId
         && event.to !== options.root
+        && !getDirectChildren(options.root, ROOT_ITEM_SELECTOR).some(
+          item => item !== dragged && item.dataset.layoutType === 'persona',
+        )
       ) {
         return false;
       }

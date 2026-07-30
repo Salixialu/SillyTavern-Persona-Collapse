@@ -217,8 +217,15 @@ export class GroupManager {
     const validSubgroupIds = new Set(currentSubgroups.map(group => group.id));
     const nextRoot = snapshot.root.map(item => ({ ...item }));
 
-    if (nextRoot.length === 0 || nextRoot[0].type !== 'persona' || !validPersonaIds.has(nextRoot[0].id)) {
+    const firstPersonaIndex = nextRoot.findIndex(
+      item => item.type === 'persona' && validPersonaIds.has(item.id),
+    );
+    if (firstPersonaIndex === -1) {
       return null;
+    }
+    if (firstPersonaIndex > 0) {
+      const [firstPersona] = nextRoot.splice(firstPersonaIndex, 1);
+      nextRoot.unshift(firstPersona);
     }
 
     const seenRootPersonas = new Set<string>();
