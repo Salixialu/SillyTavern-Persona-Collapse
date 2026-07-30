@@ -337,17 +337,20 @@ body.square-avatars .cp2-variant-avatar {
   border-radius: 4px;
 }
 .cp2-variant-drag-handle {
-  margin-right: 8px;
+  width: 16px;
+  margin-right: 4px;
   opacity: 0.3;
   cursor: grab;
   transition: opacity 0.2s;
-  padding: 4px;
+  padding: 2px 0;
 }
 .cp2-sort-handle {
-  flex: 0 0 22px;
+  flex: 0 0 16px;
+  width: 16px;
   cursor: grab;
   opacity: 0.55;
   text-align: center;
+  font-size: 0.85em;
 }
 .cp2-sort-handle:active {
   cursor: grabbing;
@@ -516,9 +519,20 @@ body.square-avatars .cp2-picker-avatar {
 }
 .cp2-manager-toolbar {
   display: flex;
+  align-items: center;
   gap: 6px;
   justify-content: flex-end;
   margin-bottom: 6px;
+}
+.cp2-manager-toolbar .menu_button {
+  height: 32px;
+  min-height: 32px;
+  padding: 4px 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  line-height: 1;
 }
 .cp2-manager-dialog {
   width: 100%;

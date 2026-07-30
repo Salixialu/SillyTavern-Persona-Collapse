@@ -603,7 +603,7 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
     avatar.onerror = () => { avatar.src = '/img/ai4.png'; };
 
     const dragHandle = document.createElement('i');
-    dragHandle.className = 'fa-solid fa-grip-vertical cp2-sort-handle cp2-variant-drag-handle';
+    dragHandle.className = 'fa-solid fa-grip-lines cp2-sort-handle cp2-variant-drag-handle';
     dragHandle.title = '拖拽排序';
     item.appendChild(dragHandle);
 
@@ -716,7 +716,7 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
     header.className = 'cp2-subgroup-header';
 
     const handle = document.createElement('i');
-    handle.className = 'fa-solid fa-grip-vertical cp2-sort-handle cp2-subgroup-handle';
+    handle.className = 'fa-solid fa-grip-lines cp2-sort-handle cp2-subgroup-handle';
     handle.title = '拖拽排序';
     header.appendChild(handle);
 
