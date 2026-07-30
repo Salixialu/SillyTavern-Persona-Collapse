@@ -214,14 +214,14 @@
   overflow: hidden;
   border: 1px solid var(--SmartThemeBorderColor);
   border-radius: 6px;
-  background: var(--black30a);
+  background: var(--black20a);
 }
 .cp2-subgroup-header {
-  min-height: 34px;
+  min-height: 38px;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 6px;
+  gap: 4px;
+  padding: 3px 6px;
   cursor: pointer;
 }
 .cp2-subgroup-toggle {
@@ -272,24 +272,30 @@
   display: grid;
   grid-template-rows: 1fr;
   opacity: 1;
-  transition: grid-template-rows 160ms ease, opacity 160ms ease;
+  transition: grid-template-rows 120ms ease, opacity 120ms ease;
 }
 .cp2-subgroup.is-collapsed .cp2-subgroup-body {
   grid-template-rows: 0fr;
   opacity: 0;
 }
 .cp2-subgroup-items {
-  min-height: 16px;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-left: 15px;
-  padding: 4px 6px 6px 10px;
+  gap: 4px;
+  margin: 0 6px 5px 17px;
+  padding: 2px 0 1px 8px;
   overflow: hidden;
   border-left: 1px solid var(--SmartThemeBorderColor);
 }
+.cp2-subgroup-items:empty {
+  display: none;
+}
 .cp2-drag-active .cp2-subgroup-items:empty {
-  min-height: 56px;
+  display: block;
+  min-height: 44px;
+  margin-top: 2px;
+  padding: 0;
   border: 1px dashed var(--SmartThemeQuoteColor);
   border-radius: 6px;
   background: rgba(var(--SmartThemeQuoteColorRGB, 52, 152, 219), 0.08);
