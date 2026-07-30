@@ -294,6 +294,10 @@
   border-radius: 6px;
   background: rgba(var(--SmartThemeQuoteColorRGB, 52, 152, 219), 0.08);
 }
+.cp2-subgroup.cp2-drop-target {
+  border-color: var(--SmartThemeQuoteColor);
+  background: rgba(var(--SmartThemeQuoteColorRGB, 52, 152, 219), 0.1);
+}
 .cp2-subgroup-delete:hover {
   color: var(--warning-color, #d35f5f);
   border-color: var(--warning-color, #d35f5f);
@@ -348,6 +352,15 @@ body.square-avatars .cp2-variant-avatar {
 }
 .cp2-sort-chosen {
   outline: 1px solid var(--SmartThemeQuoteColor);
+}
+.cp2-manual-drop-indicator {
+  position: fixed;
+  z-index: 50000;
+  height: 2px;
+  pointer-events: none;
+  border-radius: 999px;
+  background: var(--SmartThemeQuoteColor);
+  box-shadow: 0 0 0 1px rgba(var(--SmartThemeQuoteColorRGB, 52, 152, 219), 0.2);
 }
 .cp2-entry-indicator {
   width: 24px;

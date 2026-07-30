@@ -26,6 +26,8 @@ describe('persona branch panel rendering', () => {
 
   it('keeps empty subgroup drops reachable and allows entry promotion', () => {
     expect(panelSource).not.toContain("items.style.minHeight = '12px'");
-    expect(sortableSource).toContain("item !== dragged && item.dataset.layoutType === 'persona'");
+    expect(sortableSource).toContain('cp2-manual-drop-indicator');
+    expect(sortableSource).toContain('buildSnapshotFromPlacement');
+    expect(sortableSource).toContain('return false;');
   });
 });
