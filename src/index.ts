@@ -1134,6 +1134,7 @@ function openGroupManager(initialParentId: string): void {
   const popup = new Popup(popupContent, POPUP_TYPE.CONFIRM, '', {
     okButton: '完成',
     cancelButton: '关闭',
+    wider: true,
     onOk: () => {
       renderAvatarBlock();
       renderVariantsPanel(true);

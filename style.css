@@ -521,7 +521,13 @@ body.square-avatars .cp2-picker-avatar {
   margin-bottom: 6px;
 }
 .cp2-manager-dialog {
+  width: 100%;
   text-align: left;
+}
+.popup:has(.cp2-manager-dialog),
+#dialogue_popup:has(.cp2-manager-dialog) {
+  width: min(900px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
 }
 .cp2-manager-hint {
   margin-bottom: 10px;
@@ -594,6 +600,10 @@ body.square-avatars .cp2-picker-avatar {
 .cp2-manager-persona-item {
   cursor: default;
 }
+.cp2-manager-persona-item .cp2-picker-name {
+  min-width: 0;
+  flex: 1 1 auto;
+}
 .cp2-manager-parent {
   background: rgba(var(--SmartThemeQuoteColorRGB, 52, 152, 219), 0.15);
   border-color: var(--SmartThemeQuoteColor, #3498db);
@@ -611,6 +621,7 @@ body.square-avatars .cp2-picker-avatar {
   align-items: center;
   gap: 4px;
   flex-shrink: 0;
+  white-space: nowrap;
 }
 .cp2-manager-item-actions .menu_button {
   width: 28px;
@@ -659,6 +670,11 @@ body.square-avatars .cp2-picker-avatar {
 }
 
 @media (max-width: 700px) {
+  .popup:has(.cp2-manager-dialog),
+  #dialogue_popup:has(.cp2-manager-dialog) {
+    width: calc(100vw - 16px);
+    max-width: calc(100vw - 16px);
+  }
   .cp2-manager-columns {
     grid-template-columns: 1fr;
     min-height: 0;
