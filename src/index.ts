@@ -953,6 +953,7 @@ function openGroupManager(initialParentId: string): void {
     let rightHtml = `
       <div class="cp2-manager-toolbar">
         <button id="cp2-mgr-create-subgroup" class="menu_button"><i class="fa-solid fa-folder-plus"></i> 新建分组</button>
+        <button id="cp2-mgr-disband" class="menu_button cp2-manager-disband"><i class="fa-solid fa-link-slash"></i> 解散分组</button>
       </div>
       <div class="cp2-manager-branch">
     `;
@@ -1059,6 +1060,12 @@ function openGroupManager(initialParentId: string): void {
       renderPanes();
     });
 
+    rightPane.querySelector('#cp2-mgr-disband')?.addEventListener('click', () => {
+      if (!confirm('确定要解散该分组吗？所有成员将恢复为独立人设。')) return;
+      manager.disbandGroup(currentParentId);
+      renderPanes();
+    });
+
     rightPane.querySelectorAll('.cp2-mgr-rename-subgroup').forEach(el => {
       el.addEventListener('click', async e => {
         e.stopPropagation();
@@ -1119,9 +1126,6 @@ function openGroupManager(initialParentId: string): void {
       <div class="cp2-manager-pane">
         <div class="cp2-manager-pane-title">当前分支列表</div>
         <div id="cp2-mgr-right" class="cp2-picker-list cp2-manager-list"></div>
-        <div class="cp2-manager-pane-footer">
-          <button id="cp2-mgr-disband" class="menu_button cp2-manager-disband">一键解散该分组</button>
-        </div>
       </div>
     </div>
     </div>
@@ -1139,16 +1143,6 @@ function openGroupManager(initialParentId: string): void {
 
   setTimeout(() => {
     renderPanes();
-    const disbandBtn = document.getElementById('cp2-mgr-disband');
-    if (disbandBtn) {
-      disbandBtn.addEventListener('click', () => {
-        if (confirm('确定要解散该分组吗？所有成员将恢复为独立人设。')) {
-          manager.disbandGroup(currentParentId);
-          renderPanes();
-        }
-      });
-    }
-
     const searchInput = document.getElementById('cp2-mgr-search') as HTMLInputElement;
     if (searchInput) {
       searchInput.addEventListener('input', () => {
