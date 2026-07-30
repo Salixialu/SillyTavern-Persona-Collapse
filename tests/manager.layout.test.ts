@@ -3,6 +3,7 @@ import { GroupManager, type GroupSettings } from '../src/manager';
 
 const completeSettings = (overrides: Partial<GroupSettings> = {}): GroupSettings => ({
   enabled: true,
+  showBindingAvatars: true,
   manualGroups: { parent: ['a', 'b', 'c'] },
   collapsedParents: [],
   childMeta: {},

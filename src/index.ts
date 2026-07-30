@@ -9,6 +9,7 @@ import { GroupManager } from './manager';
 
 const SETTINGS_KEY = 'collapsible_personas_v3';
 const LOG_PREFIX = '[PersonaCollapse]';
+const SUBGROUP_ACCENT_COLORS = ['#70c7bd', '#e6a86b', '#8fa9e6', '#d78fb7', '#9bc77a', '#c59ee6'];
 
 // ==================== 状态 ====================
 
@@ -531,6 +532,9 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
   const layout = manager.getBranchLayout(parentId, children);
   const subgroupEntries = manager.getSettings().subgroups[parentId] || [];
   const subgroupById = new Map(subgroupEntries.map(group => [group.id, group]));
+  const subgroupAccentById = new Map(
+    subgroupEntries.map((group, index) => [group.id, SUBGROUP_ACCENT_COLORS[index % SUBGROUP_ACCENT_COLORS.length]]),
+  );
   const groupKey = JSON.stringify({
     parentId,
     currentId,
@@ -605,6 +609,7 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
     const dragHandle = document.createElement('i');
     dragHandle.className = 'fa-solid fa-grip-lines cp2-sort-handle cp2-variant-drag-handle';
     dragHandle.title = '拖拽排序';
+    dragHandle.style.setProperty('--cp2-drag-accent', subgroupAccentById.get(subgroupId || '') || 'var(--SmartThemeBodyColor)');
     item.appendChild(dragHandle);
 
     const name = getPersonaName(memberId);
@@ -622,7 +627,7 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
 
     // 🔗 角色/聊天绑定状态展示（ST 原生 connections）
     const bindings = getPersonaBindings(memberId);
-    if (bindings.length > 0) {
+    if (manager.getSettings().showBindingAvatars && bindings.length > 0) {
       const bindingWrap = document.createElement('div');
       bindingWrap.className = 'cp2-variant-bindings';
       for (const c of bindings) {
@@ -718,6 +723,7 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
     const handle = document.createElement('i');
     handle.className = 'fa-solid fa-grip-lines cp2-sort-handle cp2-subgroup-handle';
     handle.title = '拖拽排序';
+    handle.style.setProperty('--cp2-drag-accent', subgroupAccentById.get(groupId) || 'var(--SmartThemeBodyColor)');
     header.appendChild(handle);
 
     const toggle = document.createElement('button');
@@ -1539,6 +1545,12 @@ function initExtensionSettings(): void {
             <span>自动收纳绑定同一角色的卡片</span>
           </label>
         </div>
+        <div class="cp2-setting-row">
+          <label class="checkbox_label" for="cp2-setting-show-binding-avatars">
+            <input type="checkbox" id="cp2-setting-show-binding-avatars">
+            <span>在分支列表显示绑定角色头像</span>
+          </label>
+        </div>
         <div class="cp2-setting-row" style="margin-top:8px; display: flex; gap: 8px;">
           <button class="menu_button" id="cp2-btn-manage-global" style="white-space: nowrap; width: fit-content; padding: 5px 15px;"><i class="fa-solid fa-users-gear"></i> 批量管理分支</button>
           <button class="menu_button" id="cp2-btn-reset" style="white-space: nowrap; width: fit-content; padding: 5px 15px;"><i class="fa-solid fa-trash-can"></i> 重置所有分组</button>
@@ -1570,6 +1582,14 @@ function initExtensionSettings(): void {
     manager.getSettings().autoGroupByBinding = cbBind.checked;
     saveSettingsDebounced();
     scheduleRender();
+  });
+
+  const cbBindingAvatars = wrapper.querySelector<HTMLInputElement>('#cp2-setting-show-binding-avatars')!;
+  cbBindingAvatars.checked = manager.getSettings().showBindingAvatars ?? true;
+  cbBindingAvatars.addEventListener('change', () => {
+    manager.getSettings().showBindingAvatars = cbBindingAvatars.checked;
+    saveSettingsDebounced();
+    renderVariantsPanel(true);
   });
 
 

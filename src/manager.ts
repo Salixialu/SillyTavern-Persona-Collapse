@@ -21,6 +21,7 @@ export interface SubgroupSections {
 
 export interface GroupSettings {
   enabled: boolean;
+  showBindingAvatars?: boolean;
   manualGroups: Record<string, string[]>;
   collapsedParents: string[];
   childMeta: Record<string, ChildMeta>;
@@ -52,6 +53,7 @@ export class GroupManager {
 
     this.settings = {
       enabled: raw?.enabled ?? true,
+      showBindingAvatars: raw?.showBindingAvatars ?? true,
       manualGroups: raw?.manualGroups ?? {},
       collapsedParents: raw?.collapsedParents ?? [],
       childMeta: raw?.childMeta ?? {},
@@ -68,6 +70,7 @@ export class GroupManager {
     if (
       !raw ||
       !raw.manualGroups ||
+      raw.showBindingAvatars === undefined ||
       !raw.childMeta ||
       !raw.collapsedParents ||
       raw.enabled === undefined ||
