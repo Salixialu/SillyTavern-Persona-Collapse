@@ -30,6 +30,7 @@ describe('persona branch panel rendering', () => {
     expect(panelSource).toContain('cp2-mgr-move-btn');
     expect(panelSource).toContain('cp2-mgr-order-btn');
     expect(panelSource).not.toContain('cp2-mgr-entry-btn');
+    expect(panelSource).not.toContain('一键设为主卡');
     expect(panelSource).toContain('可移入分组');
     expect(panelSource).toContain('cp2-manager-subgroup');
     expect(panelSource).toContain('async function promptMovePersonaDestination');

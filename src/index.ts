@@ -1138,7 +1138,7 @@ function openGroupManager(initialParentId: string): void {
   const popupContent = `
     <div class="cp2-manager-dialog">
     <div class="cp2-manager-hint">
-      <i class="fa-solid fa-users"></i> 批量管理分组。你可以将左侧的独立人设点击加入右侧，也可以在右侧一键设为主卡。
+      <i class="fa-solid fa-users"></i> 批量管理分组。你可以将左侧的独立人设点击加入右侧，也可以在右侧调整顺序、移入分组或移出分支。
     </div>
     <div class="cp2-manager-searchbar">
       <input type="text" id="cp2-mgr-search" class="text_pole" placeholder="搜索独立人设...">
