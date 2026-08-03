@@ -17,6 +17,7 @@ const SUBGROUP_HEADER_SELECTOR = '.cp2-subgroup-header';
 const SUBGROUP_ITEMS_SELECTOR = '.cp2-subgroup-items';
 const COLLAPSED_CLASS = 'is-collapsed';
 const DRAG_ACTIVE_CLASS = 'cp2-drag-active';
+const DROP_TARGET_CLASS = 'cp2-drop-target';
 const HOVER_EXPAND_DELAY_MS = 500;
 
 function isHTMLElement(value: Element | null | undefined): value is HTMLElement {
@@ -78,6 +79,7 @@ export function mountBranchSortables(options: BranchSortableOptions): () => void
   let destroyed = false;
   let dragActive = false;
   let hoverTimer: ReturnType<typeof setTimeout> | null = null;
+  let activeDropSection: HTMLElement | null = null;
   const reducedMotion = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 
   const clearHoverTimer = (): void => {
@@ -89,8 +91,23 @@ export function mountBranchSortables(options: BranchSortableOptions): () => void
     if (!dragActive) return;
     dragActive = false;
     options.root.classList.remove(DRAG_ACTIVE_CLASS);
+    activeDropSection?.classList.remove(DROP_TARGET_CLASS);
+    activeDropSection = null;
     options.onDragStateChange(false);
     clearHoverTimer();
+  };
+
+  const updateDropTarget = (event: Sortable.MoveEvent): void => {
+    const nextSection = event.to.closest<HTMLElement>(SUBGROUP_SELECTOR);
+    if (nextSection === activeDropSection) return;
+    activeDropSection?.classList.remove(DROP_TARGET_CLASS);
+    activeDropSection = nextSection;
+    activeDropSection?.classList.add(DROP_TARGET_CLASS);
+  };
+
+  const clearDropTarget = (): void => {
+    activeDropSection?.classList.remove(DROP_TARGET_CLASS);
+    activeDropSection = null;
   };
 
   const sharedOptions: Sortable.Options = {
@@ -102,7 +119,12 @@ export function mountBranchSortables(options: BranchSortableOptions): () => void
     ghostClass: 'cp2-sort-ghost',
     chosenClass: 'cp2-sort-chosen',
     dragClass: 'cp2-sort-drag',
-    onMove: event => canMoveEntryIntoSubgroup(options.root, event),
+    onMove: event => {
+      const allowed = canMoveEntryIntoSubgroup(options.root, event);
+      if (allowed) updateDropTarget(event);
+      else clearDropTarget();
+      return allowed;
+    },
     onStart: () => {
       if (destroyed) return;
       dragActive = true;

@@ -397,6 +397,7 @@ function renderAvatarBlock(): void {
 let lastPanelPersonaId: string | null = null;
 let lastPanelGroupKey: string | null = null;
 let editingSubgroupId: string | null = null;
+let pendingSubgroupFocusId: string | null = null;
 let variantsPanelDirty = true;
 
 async function promptSubgroupName(initialName = ''): Promise<string | null> {
@@ -579,7 +580,7 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
     e.stopPropagation();
     const name = await promptSubgroupName();
     if (!name) return;
-    manager.createSubgroup(parentId, name);
+    pendingSubgroupFocusId = manager.createSubgroup(parentId, name).id;
     renderVariantsPanel(true, currentId);
   });
 
@@ -818,6 +819,7 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
 
     const items = document.createElement('div');
     items.className = 'cp2-subgroup-items';
+    items.dataset.emptyLabel = tUi('personaCollapse.dropPersonaHere', '拖入人设');
     for (const memberId of memberIds) {
       items.appendChild(createPersonaItem(memberId, { subgroupId: groupId }));
     }
@@ -833,6 +835,18 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
     } else {
       list.appendChild(createSubgroupSection(item.id));
     }
+  }
+
+  if (pendingSubgroupFocusId) {
+    const focusId = pendingSubgroupFocusId;
+    pendingSubgroupFocusId = null;
+    requestAnimationFrame(() => {
+      const section = list.querySelector<HTMLElement>(`[data-subgroup-id="${CSS.escape(focusId)}"]`);
+      if (!section) return;
+      section.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      section.classList.add('cp2-new-subgroup');
+      window.setTimeout(() => section.classList.remove('cp2-new-subgroup'), 900);
+    });
   }
 
   destroyBranchSortables = mountBranchSortables({
@@ -873,6 +887,7 @@ function openGroupManager(initialParentId: string): void {
   let currentParentId = initialParentId;
   let searchQuery = '';
   let filterMode: 'all' | 'samename' | 'samechar' = 'all';
+  let pendingManagerSubgroupFocusId: string | null = null;
 
   const allIds = Array.from(document.querySelectorAll('#user_avatar_block .avatar-container'))
     .map(getAvatarId).filter(Boolean) as string[];
@@ -1008,6 +1023,17 @@ function openGroupManager(initialParentId: string): void {
 
     leftPane.innerHTML = leftHtml;
     rightPane.innerHTML = rightHtml;
+    if (pendingManagerSubgroupFocusId) {
+      const focusId = pendingManagerSubgroupFocusId;
+      pendingManagerSubgroupFocusId = null;
+      requestAnimationFrame(() => {
+        const subgroup = rightPane.querySelector<HTMLElement>(`[data-subgroup-id="${CSS.escape(focusId)}"]`);
+        if (!subgroup) return;
+        subgroup.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        subgroup.classList.add('cp2-new-subgroup');
+        window.setTimeout(() => subgroup.classList.remove('cp2-new-subgroup'), 900);
+      });
+    }
     if (countEl) countEl.textContent = String(availableIds.length);
 
     // 左侧点击加入
@@ -1061,7 +1087,7 @@ function openGroupManager(initialParentId: string): void {
       e.stopPropagation();
       const name = await promptSubgroupName();
       if (!name) return;
-      manager.createSubgroup(currentParentId, name);
+      pendingManagerSubgroupFocusId = manager.createSubgroup(currentParentId, name).id;
       renderPanes();
     });
 

@@ -68,5 +68,8 @@ describe('persona branch panel rendering', () => {
     expect(sortableSource).toContain('emptyInsertThreshold: 48');
     expect(sortableSource).toContain('canMoveEntryIntoSubgroup');
     expect(sortableSource).toContain('item !== event.dragged && item.dataset.layoutType === \'persona\'');
+    expect(panelSource).toContain('items.dataset.emptyLabel');
+    expect(sortableSource).toContain('cp2-drop-target');
+    expect(panelSource).toContain('pendingSubgroupFocusId');
   });
 });
