@@ -898,16 +898,25 @@ function openGroupManager(initialParentId: string): void {
       isEntry?: boolean;
       subgroupId?: string | null;
       subgroups?: Array<{ id: string; name: string }>;
+      canMoveUp?: boolean;
+      canMoveDown?: boolean;
     } = {},
   ): string {
-    const { isEntry = false, subgroupId = null, subgroups = [] } = options;
+    const {
+      isEntry = false,
+      subgroupId = null,
+      subgroups = [],
+      canMoveUp = true,
+      canMoveDown = true,
+    } = options;
     const name = getPersonaName(id);
+    const moveTitle = subgroupId ? '移动到顶层或其他分组' : '移动到分组';
     const controls = isEntry ? `
       <span class="cp2-manager-entry-label"><i class="fa-solid fa-eye"></i> 入口</span>
     ` : `
-      <button class="menu_button cp2-mgr-order-btn" data-id="${escapeHtml(id)}" data-direction="up" title="上移"><i class="fa-solid fa-chevron-up"></i></button>
-      <button class="menu_button cp2-mgr-order-btn" data-id="${escapeHtml(id)}" data-direction="down" title="下移"><i class="fa-solid fa-chevron-down"></i></button>
-      <button class="menu_button cp2-mgr-move-btn" data-id="${escapeHtml(id)}" data-subgroup-id="${escapeHtml(subgroupId || '')}" title="移动到其他位置（可移入分组）"><i class="fa-solid fa-right-left"></i></button>
+      <button class="menu_button cp2-mgr-order-btn" data-id="${escapeHtml(id)}" data-direction="up" title="上移" aria-label="上移"${canMoveUp ? '' : ' disabled'}><i class="fa-solid fa-chevron-up"></i></button>
+      <button class="menu_button cp2-mgr-order-btn" data-id="${escapeHtml(id)}" data-direction="down" title="下移" aria-label="下移"${canMoveDown ? '' : ' disabled'}><i class="fa-solid fa-chevron-down"></i></button>
+      <button class="menu_button cp2-mgr-move-btn" data-id="${escapeHtml(id)}" data-subgroup-id="${escapeHtml(subgroupId || '')}" title="${moveTitle}" aria-label="${moveTitle}"><i class="fa-solid fa-right-left"></i></button>
       <button class="menu_button cp2-remove-btn" data-id="${escapeHtml(id)}" title="移出分支"><i class="fa-solid fa-xmark"></i></button>
     `;
 
@@ -982,10 +991,14 @@ function openGroupManager(initialParentId: string): void {
 
     for (const item of layout.root) {
       if (item.type === 'persona') {
+        const rootPersonas = layout.root.filter(rootItem => rootItem.type === 'persona');
+        const rootIndex = rootPersonas.findIndex(rootItem => rootItem.type === 'persona' && rootItem.id === item.id);
         rightHtml += renderManagerPersonaItem(item.id, {
           isEntry: item.id === currentParentId,
           subgroupId: null,
           subgroups: subgroupOptions,
+          canMoveUp: item.id !== currentParentId && rootIndex > 0,
+          canMoveDown: item.id !== currentParentId && rootIndex >= 0 && rootIndex < rootPersonas.length - 1,
         });
         continue;
       }
@@ -1006,9 +1019,11 @@ function openGroupManager(initialParentId: string): void {
             <button class="cp2-icon-btn cp2-subgroup-delete cp2-mgr-delete-subgroup" data-subgroup-id="${escapeHtml(item.id)}" title="删除分组"><i class="fa-solid fa-trash"></i></button>
           </div>
           <div class="cp2-manager-subgroup-items">
-            ${memberIds.map(id => renderManagerPersonaItem(id, {
+            ${memberIds.map((id, memberIndex) => renderManagerPersonaItem(id, {
               subgroupId: item.id,
               subgroups: subgroupOptions,
+              canMoveUp: memberIndex > 0,
+              canMoveDown: memberIndex < memberIds.length - 1,
             })).join('')}
           </div>
         </div>

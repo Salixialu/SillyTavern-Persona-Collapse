@@ -18,6 +18,8 @@ const SUBGROUP_ITEMS_SELECTOR = '.cp2-subgroup-items';
 const COLLAPSED_CLASS = 'is-collapsed';
 const DRAG_ACTIVE_CLASS = 'cp2-drag-active';
 const DROP_TARGET_CLASS = 'cp2-drop-target';
+const INSERT_BEFORE_CLASS = 'cp2-sort-insert-before';
+const INSERT_AFTER_CLASS = 'cp2-sort-insert-after';
 const HOVER_EXPAND_DELAY_MS = 500;
 
 function isHTMLElement(value: Element | null | undefined): value is HTMLElement {
@@ -80,6 +82,7 @@ export function mountBranchSortables(options: BranchSortableOptions): () => void
   let dragActive = false;
   let hoverTimer: ReturnType<typeof setTimeout> | null = null;
   let activeDropSection: HTMLElement | null = null;
+  let activeInsertElement: HTMLElement | null = null;
   const reducedMotion = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 
   const clearHoverTimer = (): void => {
@@ -93,6 +96,8 @@ export function mountBranchSortables(options: BranchSortableOptions): () => void
     options.root.classList.remove(DRAG_ACTIVE_CLASS);
     activeDropSection?.classList.remove(DROP_TARGET_CLASS);
     activeDropSection = null;
+    activeInsertElement?.classList.remove(INSERT_BEFORE_CLASS, INSERT_AFTER_CLASS);
+    activeInsertElement = null;
     options.onDragStateChange(false);
     clearHoverTimer();
   };
@@ -110,6 +115,25 @@ export function mountBranchSortables(options: BranchSortableOptions): () => void
     activeDropSection = null;
   };
 
+  const updateInsertMarker = (event: Sortable.MoveEvent): void => {
+    const nextElement = event.related instanceof HTMLElement && event.related.matches(PERSONA_ITEM_SELECTOR)
+      ? event.related
+      : null;
+    if (nextElement === activeInsertElement) {
+      if (nextElement) {
+        nextElement.classList.toggle(INSERT_AFTER_CLASS, Boolean(event.willInsertAfter));
+        nextElement.classList.toggle(INSERT_BEFORE_CLASS, !event.willInsertAfter);
+      }
+      return;
+    }
+    activeInsertElement?.classList.remove(INSERT_BEFORE_CLASS, INSERT_AFTER_CLASS);
+    activeInsertElement = nextElement;
+    if (activeInsertElement) {
+      activeInsertElement.classList.toggle(INSERT_AFTER_CLASS, Boolean(event.willInsertAfter));
+      activeInsertElement.classList.toggle(INSERT_BEFORE_CLASS, !event.willInsertAfter);
+    }
+  };
+
   const sharedOptions: Sortable.Options = {
     group: 'cp2-branch-layout',
     animation: reducedMotion ? 0 : 120,
@@ -121,8 +145,14 @@ export function mountBranchSortables(options: BranchSortableOptions): () => void
     dragClass: 'cp2-sort-drag',
     onMove: event => {
       const allowed = canMoveEntryIntoSubgroup(options.root, event);
-      if (allowed) updateDropTarget(event);
-      else clearDropTarget();
+      if (allowed) {
+        updateDropTarget(event);
+        updateInsertMarker(event);
+      } else {
+        clearDropTarget();
+        activeInsertElement?.classList.remove(INSERT_BEFORE_CLASS, INSERT_AFTER_CLASS);
+        activeInsertElement = null;
+      }
       return allowed;
     },
     onStart: () => {

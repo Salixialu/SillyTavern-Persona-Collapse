@@ -31,7 +31,8 @@ describe('persona branch panel rendering', () => {
     expect(panelSource).toContain('cp2-mgr-order-btn');
     expect(panelSource).not.toContain('cp2-mgr-entry-btn');
     expect(panelSource).not.toContain('一键设为主卡');
-    expect(panelSource).toContain('可移入分组');
+    expect(panelSource).toContain('移动到分组');
+    expect(panelSource).toContain('移动到顶层或其他分组');
     expect(panelSource).toContain('cp2-manager-subgroup');
     expect(panelSource).toContain('async function promptMovePersonaDestination');
     expect(panelSource).toContain('const subgroupId = await promptMovePersonaDestination');
@@ -71,6 +72,10 @@ describe('persona branch panel rendering', () => {
     expect(sortableSource).toContain('item !== event.dragged && item.dataset.layoutType === \'persona\'');
     expect(panelSource).toContain('items.dataset.emptyLabel');
     expect(sortableSource).toContain('cp2-drop-target');
+    expect(sortableSource).toContain('cp2-sort-insert-before');
+    expect(sortableSource).toContain('willInsertAfter');
     expect(panelSource).toContain('pendingSubgroupFocusId');
+    expect(panelSource).toContain('canMoveUp');
+    expect(panelSource).toContain('disabled');
   });
 });
