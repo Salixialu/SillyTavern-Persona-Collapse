@@ -28,6 +28,9 @@ describe('persona branch panel rendering', () => {
   it('renders stable subgroup controls in the manager popup', () => {
     expect(panelSource).toContain('cp2-mgr-create-subgroup');
     expect(panelSource).toContain('cp2-mgr-move-btn');
+    expect(panelSource).toContain('cp2-mgr-order-btn');
+    expect(panelSource).not.toContain('cp2-mgr-entry-btn');
+    expect(panelSource).toContain('可移入分组');
     expect(panelSource).toContain('cp2-manager-subgroup');
     expect(panelSource).toContain('async function promptMovePersonaDestination');
     expect(panelSource).toContain('const subgroupId = await promptMovePersonaDestination');

@@ -463,6 +463,40 @@ export class GroupManager {
     return true;
   }
 
+  movePersonaVertically(
+    parentId: string,
+    personaId: string,
+    direction: 'up' | 'down',
+    effectiveChildren: string[],
+  ): boolean {
+    const subgroupId = this.subgroupIdFor(parentId, personaId);
+    if (subgroupId) {
+      const group = this.settings.subgroups[parentId].find(item => item.id === subgroupId)!;
+      const index = group.personaIds.indexOf(personaId);
+      const targetIndex = index + (direction === 'up' ? -1 : 1);
+      if (index < 0 || targetIndex < 0 || targetIndex >= group.personaIds.length) return false;
+      [group.personaIds[index], group.personaIds[targetIndex]] =
+        [group.personaIds[targetIndex], group.personaIds[index]];
+      this.saveCallback();
+      return true;
+    }
+
+    if (personaId === parentId || !effectiveChildren.includes(personaId)) return false;
+    const layout = this.ensureBranchLayout(parentId, effectiveChildren);
+    const index = layout.findIndex(item => item.type === 'persona' && item.id === personaId);
+    if (index < 0) return false;
+    const step = direction === 'up' ? -1 : 1;
+    let targetIndex = index + step;
+    while (targetIndex >= 0 && targetIndex < layout.length && layout[targetIndex].type !== 'persona') {
+      targetIndex += step;
+    }
+    if (targetIndex < 0 || targetIndex >= layout.length) return false;
+    if (layout[targetIndex].type === 'persona' && layout[targetIndex].id === parentId) return false;
+    [layout[index], layout[targetIndex]] = [layout[targetIndex], layout[index]];
+    this.saveCallback();
+    return true;
+  }
+
   setAutoGroups(groups: Record<string, string[]>): void {
     this.autoGroups = groups;
     this._effectiveCache = null;

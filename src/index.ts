@@ -890,8 +890,9 @@ function openGroupManager(initialParentId: string): void {
     const controls = isEntry ? `
       <span class="cp2-manager-entry-label"><i class="fa-solid fa-eye"></i> 入口</span>
     ` : `
-      <button class="menu_button cp2-mgr-entry-btn" data-id="${escapeHtml(id)}" title="设为左侧列表入口"><i class="fa-solid fa-crown"></i></button>
-      <button class="menu_button cp2-mgr-move-btn" data-id="${escapeHtml(id)}" data-subgroup-id="${escapeHtml(subgroupId || '')}" title="移动到其他位置"><i class="fa-solid fa-right-left"></i></button>
+      <button class="menu_button cp2-mgr-order-btn" data-id="${escapeHtml(id)}" data-direction="up" title="上移"><i class="fa-solid fa-chevron-up"></i></button>
+      <button class="menu_button cp2-mgr-order-btn" data-id="${escapeHtml(id)}" data-direction="down" title="下移"><i class="fa-solid fa-chevron-down"></i></button>
+      <button class="menu_button cp2-mgr-move-btn" data-id="${escapeHtml(id)}" data-subgroup-id="${escapeHtml(subgroupId || '')}" title="移动到其他位置（可移入分组）"><i class="fa-solid fa-right-left"></i></button>
       <button class="menu_button cp2-remove-btn" data-id="${escapeHtml(id)}" title="移出分支"><i class="fa-solid fa-xmark"></i></button>
     `;
 
@@ -1033,16 +1034,14 @@ function openGroupManager(initialParentId: string): void {
       });
     });
 
-    // 右侧设为主卡
-    rightPane.querySelectorAll('.cp2-mgr-entry-btn').forEach(el => {
+    // 右侧上下移动：顶层只在顶层人设之间移动，分组内只在当前分组内移动。
+    rightPane.querySelectorAll('.cp2-mgr-order-btn').forEach(el => {
       el.addEventListener('click', e => {
         e.stopPropagation();
         const id = (el as HTMLElement).dataset.id;
-        if (id) {
-          manager.promoteToParent(currentParentId, id);
-          currentParentId = id; // 切换当前管理的主卡上下文
-          renderPanes();
-        }
+        const direction = (el as HTMLElement).dataset.direction;
+        if (id && (direction === 'up' || direction === 'down') &&
+          manager.movePersonaVertically(currentParentId, id, direction, children)) renderPanes();
       });
     });
 

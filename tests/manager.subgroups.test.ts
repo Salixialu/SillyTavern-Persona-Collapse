@@ -258,3 +258,26 @@ it('rejects cross-section reorder and reorders within one section', () => {
   expect(manager.canReorderWithinSection('parent', 'a', 'c')).toBe(false);
   expect(manager.canReorderWithinSection('parent', 'c', 'b')).toBe(false);
 });
+
+it('moves personas up and down within their current section', () => {
+  const save = vi.fn();
+  const manager = new GroupManager(completeSettings({
+    manualGroups: { parent: ['a', 'b', 'c'] },
+    subgroups: {
+      parent: [{ id: 'one', name: '一组', personaIds: ['b', 'c'], collapsed: false }],
+    },
+    branchLayouts: {
+      parent: [
+        { type: 'persona', id: 'parent' },
+        { type: 'persona', id: 'a' },
+        { type: 'subgroup', id: 'one' },
+      ],
+    },
+  }), save);
+
+  expect(manager.movePersonaVertically('parent', 'c', 'up', ['a', 'b', 'c'])).toBe(true);
+  expect(manager.getSettings().subgroups.parent[0].personaIds).toEqual(['c', 'b']);
+  expect(manager.movePersonaVertically('parent', 'a', 'down', ['a', 'b', 'c'])).toBe(false);
+  expect(manager.movePersonaVertically('parent', 'a', 'up', ['a', 'b', 'c'])).toBe(false);
+  expect(save).toHaveBeenCalledOnce();
+});
