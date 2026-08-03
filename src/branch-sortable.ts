@@ -38,11 +38,19 @@ function getRootSubgroupItems(root: HTMLElement): HTMLElement[] {
 
 function canMoveEntryIntoSubgroup(root: HTMLElement, event: Sortable.MoveEvent): boolean {
   if (event.to === root || !(event.dragged instanceof HTMLElement)) return true;
+  if (event.dragged.dataset.layoutType !== 'persona') return false;
   const entry = getDirectChildren(root, ROOT_ITEM_SELECTOR)[0];
   if (entry?.dataset.layoutType !== 'persona' || event.dragged !== entry) return true;
   return getDirectChildren(root, ROOT_ITEM_SELECTOR).some(
     item => item !== event.dragged && item.dataset.layoutType === 'persona',
   );
+}
+
+function canMoveRootItemToStart(root: HTMLElement, event: Sortable.MoveEvent): boolean {
+  if (event.to !== root || !(event.dragged instanceof HTMLElement)) return true;
+  if (event.dragged.dataset.layoutType !== 'subgroup' || event.willInsertAfter) return true;
+  const firstItem = getDirectChildren(root, ROOT_ITEM_SELECTOR)[0];
+  return event.related !== firstItem;
 }
 
 export function readBranchLayoutSnapshot(root: HTMLElement): BranchLayoutSnapshot {
@@ -91,15 +99,20 @@ export function mountBranchSortables(options: BranchSortableOptions): () => void
   };
 
   const stopDrag = (): void => {
-    if (!dragActive) return;
+    const wasActive = dragActive;
     dragActive = false;
     options.root.classList.remove(DRAG_ACTIVE_CLASS);
     activeDropSection?.classList.remove(DROP_TARGET_CLASS);
     activeDropSection = null;
     activeInsertElement?.classList.remove(INSERT_BEFORE_CLASS, INSERT_AFTER_CLASS);
     activeInsertElement = null;
-    options.onDragStateChange(false);
+    if (wasActive) options.onDragStateChange(false);
     clearHoverTimer();
+  };
+
+  const clearInsertMarker = (): void => {
+    activeInsertElement?.classList.remove(INSERT_BEFORE_CLASS, INSERT_AFTER_CLASS);
+    activeInsertElement = null;
   };
 
   const updateDropTarget = (event: Sortable.MoveEvent): void => {
@@ -116,7 +129,9 @@ export function mountBranchSortables(options: BranchSortableOptions): () => void
   };
 
   const updateInsertMarker = (event: Sortable.MoveEvent): void => {
-    const nextElement = event.related instanceof HTMLElement && event.related.matches(PERSONA_ITEM_SELECTOR)
+    const nextElement = event.related instanceof HTMLElement && event.related.matches(
+      `${ROOT_ITEM_SELECTOR}, ${PERSONA_ITEM_SELECTOR}`,
+    )
       ? event.related
       : null;
     if (nextElement === activeInsertElement) {
@@ -144,17 +159,24 @@ export function mountBranchSortables(options: BranchSortableOptions): () => void
     chosenClass: 'cp2-sort-chosen',
     dragClass: 'cp2-sort-drag',
     onMove: event => {
-      const allowed = canMoveEntryIntoSubgroup(options.root, event);
+      const allowed = canMoveEntryIntoSubgroup(options.root, event)
+        && canMoveRootItemToStart(options.root, event);
       if (allowed) {
         updateDropTarget(event);
         updateInsertMarker(event);
       } else {
         clearDropTarget();
-        activeInsertElement?.classList.remove(INSERT_BEFORE_CLASS, INSERT_AFTER_CLASS);
-        activeInsertElement = null;
+        clearInsertMarker();
       }
       return allowed;
     },
+    delay: 180,
+    delayOnTouchOnly: true,
+    touchStartThreshold: 5,
+    fallbackTolerance: 4,
+    scroll: true,
+    scrollSensitivity: 60,
+    scrollSpeed: 16,
     onStart: () => {
       if (destroyed) return;
       dragActive = true;
@@ -166,6 +188,7 @@ export function mountBranchSortables(options: BranchSortableOptions): () => void
       stopDrag();
       if (!accepted) queueMicrotask(options.onReject);
     },
+    onCancel: stopDrag,
   };
 
   instances.push(Sortable.create(options.root, sharedOptions));

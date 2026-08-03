@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 // eslint-disable-next-line import-x/default
 import panelSource from '../src/index.ts?raw';
 import sortableSource from '../src/branch-sortable.ts?raw';
+import managerSource from '../src/manager.ts?raw';
 
 describe('persona branch panel rendering', () => {
   it('renders mixed root layouts through branch sortables', () => {
@@ -74,6 +75,14 @@ describe('persona branch panel rendering', () => {
     expect(sortableSource).toContain('cp2-drop-target');
     expect(sortableSource).toContain('cp2-sort-insert-before');
     expect(sortableSource).toContain('willInsertAfter');
+    expect(sortableSource).toContain('canMoveRootItemToStart');
+    expect(sortableSource).toContain('onCancel: stopDrag');
+    expect(sortableSource).toContain('delayOnTouchOnly: true');
+    expect(managerSource).toContain('if (firstPersonaIndex !== 0) return null;');
+    expect(panelSource).toContain('let runtimeCleanup');
+    expect(panelSource).toContain('runtimeCleanup?.();');
+    expect(panelSource).toContain('clearInterval(panelInterval);');
+    expect(panelSource).toContain('bodyObserver.disconnect();');
     expect(panelSource).toContain('pendingSubgroupFocusId');
     expect(panelSource).toContain('canMoveUp');
     expect(panelSource).toContain('disabled');

@@ -1261,9 +1261,10 @@ function showContextMenu(x: number, y: number, items: Array<{ label: string; act
   });
 }
 
-function setupContextMenu(): void {
+function setupContextMenu(): () => void {
   const block = document.getElementById('user_avatar_block');
-  if (!block) return;
+  if (!block) return () => undefined;
+  const controller = new AbortController();
 
   block.addEventListener('contextmenu', async evt => {
     const settings = manager?.getSettings();
@@ -1291,11 +1292,16 @@ function setupContextMenu(): void {
     if (items.length > 0) {
       showContextMenu(evt.clientX, evt.clientY, items);
     }
-  });
+  }, { signal: controller.signal });
 
   document.addEventListener('click', evt => {
     if (contextMenuEl && !(evt.target as Element).closest('.cp2-context-menu')) closeContextMenu();
-  });
+  }, { signal: controller.signal });
+
+  return () => {
+    controller.abort();
+    closeContextMenu();
+  };
 }
 
 // ==================== 拖拽：桌面鼠标 ====================
@@ -1303,9 +1309,10 @@ function setupContextMenu(): void {
 let draggingId: string | null = null;
 let lastDropTime = 0;
 
-function setupMouseDrag(): void {
+function setupMouseDrag(): () => void {
   const block = document.getElementById('user_avatar_block');
-  if (!block) return;
+  if (!block) return () => undefined;
+  const controller = new AbortController();
 
   block.addEventListener('dragstart', evt => {
     const settings = manager?.getSettings();
@@ -1314,7 +1321,7 @@ function setupMouseDrag(): void {
     if (!container) return;
     draggingId = getAvatarId(container);
     if (draggingId) container.classList.add('cp2-dragging');
-  });
+  }, { signal: controller.signal });
 
   block.addEventListener('dragover', evt => {
     if (!draggingId) return;
@@ -1327,18 +1334,18 @@ function setupMouseDrag(): void {
     if (targetId && targetId !== draggingId) {
       container.classList.add('cp2-drag-target');
     }
-  });
+  }, { signal: controller.signal });
 
   block.addEventListener('dragenter', evt => {
     if (!draggingId) return;
     const container = (evt.target as Element).closest('.avatar-container');
     if (container && getAvatarId(container) !== draggingId) container.classList.add('cp2-drag-target');
-  });
+  }, { signal: controller.signal });
 
   block.addEventListener('dragleave', evt => {
     const container = (evt.target as Element).closest('.avatar-container');
     container?.classList.remove('cp2-drag-target');
-  });
+  }, { signal: controller.signal });
 
   block.addEventListener('drop', evt => {
     if (!draggingId) return;
@@ -1360,14 +1367,22 @@ function setupMouseDrag(): void {
       }
     }
     draggingId = null;
-  });
+  }, { signal: controller.signal });
 
   block.addEventListener('dragend', evt => {
     const container = (evt.target as Element).closest('.avatar-container');
     container?.classList.remove('cp2-dragging');
     block.querySelectorAll('.cp2-drag-target').forEach(el => el.classList.remove('cp2-drag-target'));
     draggingId = null;
-  });
+  }, { signal: controller.signal });
+
+  return () => {
+    controller.abort();
+    block.querySelectorAll('.cp2-dragging, .cp2-drag-target').forEach(el => {
+      el.classList.remove('cp2-dragging', 'cp2-drag-target');
+    });
+    draggingId = null;
+  };
 }
 
 // ==================== 拖拽：触屏长按 ====================
@@ -1380,9 +1395,10 @@ let touchStartX = 0;
 let touchStartY = 0;
 let lastTouchTarget: Element | null = null;
 
-function setupTouchDrag(): void {
+function setupTouchDrag(): () => void {
   const block = document.getElementById('user_avatar_block');
-  if (!block) return;
+  if (!block) return () => undefined;
+  const controller = new AbortController();
 
   block.addEventListener('touchstart', evt => {
     const settings = manager?.getSettings();
@@ -1406,7 +1422,7 @@ function setupTouchDrag(): void {
       // 震动反馈（若支持）
       if (navigator.vibrate) navigator.vibrate(50);
     }, 500);
-  }, { passive: true });
+  }, { passive: true, signal: controller.signal });
 
   block.addEventListener('touchmove', evt => {
     const touch = evt.touches[0];
@@ -1437,7 +1453,7 @@ function setupTouchDrag(): void {
     } else {
       lastTouchTarget = null;
     }
-  }, { passive: false });
+  }, { passive: false, signal: controller.signal });
 
   block.addEventListener('touchend', evt => {
     if (touchTimer) { clearTimeout(touchTimer); touchTimer = null; }
@@ -1472,7 +1488,30 @@ function setupTouchDrag(): void {
     touchDragId = null;
     touchDragEl = null;
     lastTouchTarget = null;
-  });
+  }, { signal: controller.signal });
+
+  block.addEventListener('touchcancel', () => {
+    if (touchTimer) clearTimeout(touchTimer);
+    touchTimer = null;
+    touchDragEl?.classList.remove('cp2-dragging');
+    lastTouchTarget?.classList.remove('cp2-drag-target');
+    touchDragging = false;
+    touchDragId = null;
+    touchDragEl = null;
+    lastTouchTarget = null;
+  }, { signal: controller.signal });
+
+  return () => {
+    controller.abort();
+    if (touchTimer) clearTimeout(touchTimer);
+    touchTimer = null;
+    touchDragEl?.classList.remove('cp2-dragging');
+    lastTouchTarget?.classList.remove('cp2-drag-target');
+    touchDragging = false;
+    touchDragId = null;
+    touchDragEl = null;
+    lastTouchTarget = null;
+  };
 }
 
 // ==================== 全局弹窗视觉分组 ====================
@@ -1539,17 +1578,27 @@ function applyPopupVisualGrouping(popupEl: HTMLElement): void {
   }
 }
 
-function setupBodyObserver(): void {
+function setupBodyObserver(): () => void {
+  const pendingTimers = new Set<ReturnType<typeof setTimeout>>();
   const bodyObserver = new MutationObserver(mutations => {
     for (const m of mutations) {
       for (const node of Array.from(m.addedNodes)) {
         if (node instanceof HTMLElement && node.classList.contains('popup')) {
-          setTimeout(() => applyPopupVisualGrouping(node), 100);
+          const timer = setTimeout(() => {
+            pendingTimers.delete(timer);
+            applyPopupVisualGrouping(node);
+          }, 100);
+          pendingTimers.add(timer);
         }
       }
     }
   });
   bodyObserver.observe(document.body, { childList: true });
+  return () => {
+    bodyObserver.disconnect();
+    for (const timer of pendingTimers) clearTimeout(timer);
+    pendingTimers.clear();
+  };
 }
 
 // ==================== 扩展设置面板 ====================
@@ -1663,14 +1712,15 @@ function initExtensionSettings(): void {
 
 // ==================== MutationObserver ====================
 
-let observer: MutationObserver | null = null;
-
-function setupMutationObserver(): void {
+function setupMutationObserver(): () => void {
   const block = document.getElementById('user_avatar_block');
-  if (!block || observer) return;
-  observer = new MutationObserver(() => { if (!isRendering) scheduleRender(); });
+  if (!block) return () => undefined;
+  const observer = new MutationObserver(() => { if (!isRendering) scheduleRender(); });
   observer.observe(block, { childList: true, subtree: false });
+  return () => observer.disconnect();
 }
+
+let runtimeCleanup: (() => void) | null = null;
 
 // ==================== 工具函数 ====================
 
@@ -1696,13 +1746,24 @@ if (typeof jQuery !== 'undefined') {
     await loadPersonasApi();
 
     eventSource.on(event_types.APP_READY, () => {
+      runtimeCleanup?.();
+      const disposers = [
+        setupContextMenu(),
+        setupMouseDrag(),
+        setupTouchDrag(),
+        setupMutationObserver(),
+        setupBodyObserver(),
+      ];
+      const panelInterval = setInterval(() => renderVariantsPanel(), 500);
+      runtimeCleanup = () => {
+        for (const dispose of disposers) dispose();
+        clearInterval(panelInterval);
+        if (renderTimer) clearTimeout(renderTimer);
+        renderTimer = null;
+      };
+
       initExtensionSettings();
       renderAvatarBlock();
-      setupContextMenu();
-      setupMouseDrag();
-      setupTouchDrag();
-      setupMutationObserver();
-      setupBodyObserver();
       renderVariantsPanel(true);
     });
 
@@ -1715,9 +1776,6 @@ if (typeof jQuery !== 'undefined') {
     eventSource.on(event_types.CHAT_CHANGED, () => {
       scheduleRender();
     });
-
-    // 轮询详情页刷新（ST 的人设切换不总是触发事件）
-    setInterval(() => renderVariantsPanel(), 500);
 
     console.log(`${LOG_PREFIX} 初始化完成`);
   });

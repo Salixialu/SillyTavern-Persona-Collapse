@@ -298,7 +298,7 @@ describe('GroupManager applyBranchLayoutSnapshot', () => {
     expect(save).toHaveBeenCalledOnce();
   });
 
-  it('promotes the first remaining root persona when the entry moves into an empty subgroup', () => {
+  it('rejects a layout that removes the entry from the root position', () => {
     const save = vi.fn();
     const manager = new GroupManager(completeSettings({
       manualGroups: { parent: ['a', 'b'] },
@@ -324,17 +324,18 @@ describe('GroupManager applyBranchLayoutSnapshot', () => {
       subgroupMembers: { warm: ['parent'] },
     }, ['a', 'b']);
 
-    expect(newEntry).toBe('a');
-    expect(manager.getSettings().manualGroups).toEqual({ a: ['parent', 'b'] });
-    expect(manager.getSettings().subgroups.a).toEqual([
-      { id: 'warm', name: '温柔线', personaIds: ['parent'], collapsed: false },
+    expect(newEntry).toBeNull();
+    expect(manager.getSettings().manualGroups).toEqual({ parent: ['a', 'b'] });
+    expect(manager.getSettings().subgroups.parent).toEqual([
+      { id: 'warm', name: '温柔线', personaIds: [], collapsed: false },
     ]);
-    expect(manager.getSettings().branchLayouts.a).toEqual([
-      { type: 'persona', id: 'a' },
+    expect(manager.getSettings().branchLayouts.parent).toEqual([
+      { type: 'persona', id: 'parent' },
       { type: 'subgroup', id: 'warm' },
+      { type: 'persona', id: 'a' },
       { type: 'persona', id: 'b' },
     ]);
-    expect(save).toHaveBeenCalledOnce();
+    expect(save).not.toHaveBeenCalled();
   });
 
   it.each([

@@ -226,10 +226,7 @@ export class GroupManager {
     if (firstPersonaIndex === -1) {
       return null;
     }
-    if (firstPersonaIndex > 0) {
-      const [firstPersona] = nextRoot.splice(firstPersonaIndex, 1);
-      nextRoot.unshift(firstPersona);
-    }
+    if (firstPersonaIndex !== 0) return null;
 
     const seenRootPersonas = new Set<string>();
     const seenRootSubgroups = new Set<string>();
