@@ -417,6 +417,9 @@ body.square-avatars .cp2-variant-avatar {
   opacity: 0.3;
   border: 1px dashed var(--SmartThemeQuoteColor);
 }
+.cp2-sort-source {
+  visibility: hidden !important;
+}
 .cp2-root-item.cp2-sort-insert-before,
 .cp2-root-item.cp2-sort-insert-after,
 .cp2-persona-sort-item.cp2-sort-insert-before,

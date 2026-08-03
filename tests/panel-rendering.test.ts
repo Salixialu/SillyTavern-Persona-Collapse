@@ -78,6 +78,11 @@ describe('persona branch panel rendering', () => {
     expect(sortableSource).toContain('canMoveRootItemToStart');
     expect(sortableSource).toContain('onCancel: stopDrag');
     expect(sortableSource).toContain('delayOnTouchOnly: true');
+    expect(sortableSource).toContain('pendingDrop');
+    expect(sortableSource).toContain('return false;');
+    expect(sortableSource).toContain('SOURCE_HIDDEN_CLASS');
+    expect(sortableSource).toContain('to.insertBefore(draggedElement');
+    expect(sortableSource).toContain('cp2-sort-source');
     expect(managerSource).toContain('if (firstPersonaIndex !== 0) return null;');
     expect(panelSource).toContain('let runtimeCleanup');
     expect(panelSource).toContain('runtimeCleanup?.();');
