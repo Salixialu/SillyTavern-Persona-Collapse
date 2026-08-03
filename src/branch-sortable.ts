@@ -33,6 +33,15 @@ function getRootSubgroupItems(root: HTMLElement): HTMLElement[] {
   return Array.from(root.querySelectorAll<HTMLElement>(SUBGROUP_ITEMS_SELECTOR));
 }
 
+function canMoveEntryIntoSubgroup(root: HTMLElement, event: Sortable.MoveEvent): boolean {
+  if (event.to === root || !(event.dragged instanceof HTMLElement)) return true;
+  const entry = getDirectChildren(root, ROOT_ITEM_SELECTOR)[0];
+  if (entry?.dataset.layoutType !== 'persona' || event.dragged !== entry) return true;
+  return getDirectChildren(root, ROOT_ITEM_SELECTOR).some(
+    item => item !== event.dragged && item.dataset.layoutType === 'persona',
+  );
+}
+
 export function readBranchLayoutSnapshot(root: HTMLElement): BranchLayoutSnapshot {
   const rootItems: BranchLayoutItem[] = [];
   const subgroupMembers: Record<string, string[]> = {};
@@ -89,10 +98,11 @@ export function mountBranchSortables(options: BranchSortableOptions): () => void
     animation: reducedMotion ? 0 : 120,
     handle: '.cp2-sort-handle',
     draggable: ROOT_ITEM_SELECTOR,
-    emptyInsertThreshold: 24,
+    emptyInsertThreshold: 48,
     ghostClass: 'cp2-sort-ghost',
     chosenClass: 'cp2-sort-chosen',
     dragClass: 'cp2-sort-drag',
+    onMove: event => canMoveEntryIntoSubgroup(options.root, event),
     onStart: () => {
       if (destroyed) return;
       dragActive = true;

@@ -60,4 +60,10 @@ describe('persona branch panel rendering', () => {
     expect(sortableSource).not.toContain('pointermove');
     expect(sortableSource).not.toContain('forceFallback: true');
   });
+
+  it('keeps the first empty subgroup drop target reachable', () => {
+    expect(sortableSource).toContain('emptyInsertThreshold: 48');
+    expect(sortableSource).toContain('canMoveEntryIntoSubgroup');
+    expect(sortableSource).toContain('item !== event.dragged && item.dataset.layoutType === \'persona\'');
+  });
 });

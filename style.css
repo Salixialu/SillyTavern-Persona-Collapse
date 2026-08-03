@@ -293,7 +293,7 @@
 }
 .cp2-drag-active .cp2-subgroup-items:empty {
   display: block;
-  min-height: 44px;
+  min-height: 56px;
   margin-top: 2px;
   padding: 0;
   border: 1px dashed var(--SmartThemeQuoteColor);
