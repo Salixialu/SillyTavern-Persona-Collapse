@@ -82,6 +82,8 @@ describe('persona branch panel rendering', () => {
     expect(sortableSource).toContain('return false;');
     expect(sortableSource).toContain('SOURCE_HIDDEN_CLASS');
     expect(sortableSource).toContain('to.insertBefore(draggedElement');
+    expect(sortableSource).toContain('const isCrossContainer = event.to !== currentDragContainer;');
+    expect(sortableSource).toContain('return isCrossContainer;');
     expect(sortableSource).toContain('cp2-sort-source');
     expect(managerSource).toContain('if (firstPersonaIndex !== 0) return null;');
     expect(panelSource).toContain('let runtimeCleanup');

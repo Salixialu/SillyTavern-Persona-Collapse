@@ -99,6 +99,7 @@ export function mountBranchSortables(options: BranchSortableOptions): () => void
   let activeDropSection: HTMLElement | null = null;
   let activeInsertElement: HTMLElement | null = null;
   let draggedElement: HTMLElement | null = null;
+  let currentDragContainer: HTMLElement | null = null;
   let pendingDrop: PendingDrop | null = null;
   const reducedMotion = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 
@@ -117,6 +118,7 @@ export function mountBranchSortables(options: BranchSortableOptions): () => void
     activeInsertElement = null;
     draggedElement?.classList.remove(SOURCE_HIDDEN_CLASS);
     draggedElement = null;
+    currentDragContainer = null;
     pendingDrop = null;
     if (wasActive) options.onDragStateChange(false);
     clearHoverTimer();
@@ -174,6 +176,7 @@ export function mountBranchSortables(options: BranchSortableOptions): () => void
       const allowed = canMoveEntryIntoSubgroup(options.root, event)
         && canMoveRootItemToStart(options.root, event);
       if (allowed) {
+        const isCrossContainer = event.to !== currentDragContainer;
         updateDropTarget(event);
         updateInsertMarker(event);
         pendingDrop = {
@@ -183,12 +186,16 @@ export function mountBranchSortables(options: BranchSortableOptions): () => void
             : null,
           willInsertAfter: Boolean(event.willInsertAfter),
         };
+        if (isCrossContainer) currentDragContainer = event.to;
+        // 跨容器必须让 SortableJS 完成一次接管，否则目标分组不会收到项目；
+        // 进入同一容器后停止实时排序，最终位置由 onEnd 的 pendingDrop 一次提交。
+        return isCrossContainer;
       } else {
         clearDropTarget();
         clearInsertMarker();
         pendingDrop = null;
       }
-      // 只预览落点，禁止 SortableJS 在拖动过程中改写列表布局。
+      // 同一容器内只预览落点，禁止 SortableJS 持续改写列表布局。
       return false;
     },
     delay: 180,
@@ -202,6 +209,7 @@ export function mountBranchSortables(options: BranchSortableOptions): () => void
       if (destroyed) return;
       dragActive = true;
       draggedElement = event.item;
+      currentDragContainer = event.from;
       pendingDrop = null;
       draggedElement.classList.add(SOURCE_HIDDEN_CLASS);
       options.root.classList.add(DRAG_ACTIVE_CLASS);
