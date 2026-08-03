@@ -512,9 +512,9 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
     // 独立人设：只显示管理按钮，方便快速组建分支
     panel.style.display = 'block';
     panel.innerHTML = `
-      <div class="cp2-variants-header" style="justify-content: center; padding: 5px;">
-        <button class="menu_button cp2-variants-add-btn" id="cp2-add-branch-btn" style="width:100%; margin:0; display:flex; justify-content:center; align-items:center; gap:8px;" title="组建或管理当前角色的分支">
-          <i class="fa-solid fa-users-gear"></i> 管理分支卡片
+      <div class="cp2-variants-header cp2-standalone-header">
+        <button class="menu_button cp2-toolbar-btn" id="cp2-add-branch-btn" title="组建或管理当前角色的分支">
+          <i class="fa-solid fa-users-gear"></i><span>管理分支</span>
         </button>
       </div>
     `;
@@ -553,18 +553,18 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
   teardownBranchSortables();
   panel.style.display = 'block';
 
-  // 构建 header
+  // 使用原生风格工具栏，避免额外标题占用列表空间。
   const headerHTML = `
-    <div class="cp2-variants-header">
-      <div class="cp2-variants-title-wrap">
-        <span class="cp2-variants-header-title">🎭 ${escapeHtml(tUi('personaCollapse.branches', '人设分支'))} (${children.length + 1})</span>
-        <button class="cp2-icon-btn" id="cp2-create-subgroup" title="${escapeHtml(tUi('personaCollapse.createSubgroup', '新建分组'))}" aria-label="${escapeHtml(tUi('personaCollapse.createSubgroup', '新建分组'))}"><i class="fa-solid fa-folder-plus"></i></button>
-      </div>
+    <div class="cp2-variants-header" role="toolbar" aria-label="${escapeHtml(tUi('personaCollapse.branchActions', '人设分支操作'))}">
       <div class="cp2-variants-header-actions">
-        <button class="cp2-variants-add-btn" id="cp2-add-branch-btn" title="批量管理此分支" style="border-radius: 4px; padding: 2px 8px;">
-          <i class="fa-solid fa-users-gear"></i> 管理
+        <button class="menu_button cp2-toolbar-btn" id="cp2-create-subgroup" title="${escapeHtml(tUi('personaCollapse.createSubgroup', '新建分组'))}" aria-label="${escapeHtml(tUi('personaCollapse.createSubgroup', '新建分组'))}">
+          <i class="fa-solid fa-folder-plus"></i><span>${escapeHtml(tUi('personaCollapse.createSubgroup', '新建分组'))}</span>
+        </button>
+        <button class="menu_button cp2-toolbar-btn" id="cp2-add-branch-btn" title="批量管理此分支" aria-label="批量管理此分支">
+          <i class="fa-solid fa-users-gear"></i><span>管理</span>
         </button>
       </div>
+      <span class="cp2-variants-count" title="${escapeHtml(tUi('personaCollapse.branchCount', '分支内人设数量'))}">${children.length + 1}</span>
     </div>
     <div class="cp2-variants-list"></div>
   `;
