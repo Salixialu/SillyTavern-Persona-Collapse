@@ -1,6 +1,6 @@
 # 给第一次整理人设的你：Persona Collapse 使用说明
 
-> 适用于 SillyTavern Persona Collapse 3.2.6
+> 适用于 SillyTavern Persona Collapse 3.2.7
 
 如果你的人设列表已经变成了“同一个人几十套衣服、几十条时间线、几十个实验版本”，先别急着删卡，也不用重新命名所有文件。
 
@@ -261,4 +261,4 @@ Persona Collapse 不会替你删除或改写人设，它只是把散落在列表
 
 项目地址：<https://github.com/Salixialu/SillyTavern-Persona-Collapse>
 
-当前版本：`3.2.6`
+当前版本：`3.2.7`

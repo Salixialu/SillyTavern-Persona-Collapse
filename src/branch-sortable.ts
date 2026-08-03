@@ -99,8 +99,8 @@ export function mountBranchSortables(options: BranchSortableOptions): () => void
   let activeDropSection: HTMLElement | null = null;
   let activeInsertElement: HTMLElement | null = null;
   let draggedElement: HTMLElement | null = null;
-  let currentDragContainer: HTMLElement | null = null;
   let pendingDrop: PendingDrop | null = null;
+  let dragWatchdog: ReturnType<typeof setTimeout> | null = null;
   const reducedMotion = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 
   const clearHoverTimer = (): void => {
@@ -118,8 +118,9 @@ export function mountBranchSortables(options: BranchSortableOptions): () => void
     activeInsertElement = null;
     draggedElement?.classList.remove(SOURCE_HIDDEN_CLASS);
     draggedElement = null;
-    currentDragContainer = null;
     pendingDrop = null;
+    if (dragWatchdog) clearTimeout(dragWatchdog);
+    dragWatchdog = null;
     if (wasActive) options.onDragStateChange(false);
     clearHoverTimer();
   };
@@ -176,7 +177,7 @@ export function mountBranchSortables(options: BranchSortableOptions): () => void
       const allowed = canMoveEntryIntoSubgroup(options.root, event)
         && canMoveRootItemToStart(options.root, event);
       if (allowed) {
-        const isCrossContainer = event.to !== currentDragContainer;
+        const isCrossContainer = event.to !== draggedElement?.parentElement;
         updateDropTarget(event);
         updateInsertMarker(event);
         pendingDrop = {
@@ -186,7 +187,6 @@ export function mountBranchSortables(options: BranchSortableOptions): () => void
             : null,
           willInsertAfter: Boolean(event.willInsertAfter),
         };
-        if (isCrossContainer) currentDragContainer = event.to;
         // 跨容器必须让 SortableJS 完成一次接管，否则目标分组不会收到项目；
         // 进入同一容器后停止实时排序，最终位置由 onEnd 的 pendingDrop 一次提交。
         return isCrossContainer;
@@ -209,11 +209,15 @@ export function mountBranchSortables(options: BranchSortableOptions): () => void
       if (destroyed) return;
       dragActive = true;
       draggedElement = event.item;
-      currentDragContainer = event.from;
       pendingDrop = null;
       draggedElement.classList.add(SOURCE_HIDDEN_CLASS);
       options.root.classList.add(DRAG_ACTIVE_CLASS);
       options.onDragStateChange(true);
+      dragWatchdog = setTimeout(() => {
+        if (!dragActive) return;
+        stopDrag();
+        options.onReject();
+      }, 30000);
     },
     onEnd: () => {
       if (draggedElement && pendingDrop) {
