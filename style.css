@@ -291,13 +291,30 @@
 .cp2-subgroup-items:empty {
   display: none;
 }
-.cp2-drag-active .cp2-subgroup-items:empty {
-  display: block;
-  min-height: 44px;
-  margin-top: 2px;
-  padding: 0;
+.cp2-drag-active .cp2-subgroup-items:empty::before {
+  content: attr(data-empty-label);
+  display: flex;
+  min-height: 56px;
+  align-items: center;
+  justify-content: center;
   border: 1px dashed var(--SmartThemeQuoteColor);
   border-radius: 6px;
+  color: var(--SmartThemeQuoteColor);
+  font-size: 0.82em;
+  opacity: 0.85;
+}
+.cp2-subgroup.cp2-new-subgroup,
+.cp2-manager-subgroup.cp2-new-subgroup {
+  animation: cp2-subgroup-focus 900ms ease-out;
+}
+@keyframes cp2-subgroup-focus {
+  0%, 100% { box-shadow: 0 0 0 transparent; }
+  35% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--SmartThemeQuoteColor) 35%, transparent); }
+}
+.cp2-drag-active .cp2-subgroup-items:empty {
+  display: block;
+  margin-top: 2px;
+  padding: 0;
   background: rgba(var(--SmartThemeQuoteColorRGB, 52, 152, 219), 0.08);
 }
 .cp2-subgroup.cp2-drop-target {
@@ -400,6 +417,34 @@ body.square-avatars .cp2-variant-avatar {
   opacity: 0.3;
   border: 1px dashed var(--SmartThemeQuoteColor);
 }
+.cp2-sort-source {
+  visibility: hidden !important;
+}
+.cp2-root-item.cp2-sort-insert-before,
+.cp2-root-item.cp2-sort-insert-after,
+.cp2-persona-sort-item.cp2-sort-insert-before,
+.cp2-persona-sort-item.cp2-sort-insert-after {
+  position: relative;
+}
+.cp2-root-item.cp2-sort-insert-before::before,
+.cp2-root-item.cp2-sort-insert-after::after,
+.cp2-persona-sort-item.cp2-sort-insert-before::before,
+.cp2-persona-sort-item.cp2-sort-insert-after::after {
+  position: absolute;
+  right: 0;
+  left: 0;
+  height: 3px;
+  z-index: 2;
+  pointer-events: none;
+  border-radius: 999px;
+  background: var(--SmartThemeQuoteColor);
+  box-shadow: 0 0 0 1px rgba(var(--SmartThemeQuoteColorRGB, 52, 152, 219), 0.25);
+  content: '';
+}
+.cp2-root-item.cp2-sort-insert-before::before,
+.cp2-persona-sort-item.cp2-sort-insert-before::before { top: 0; }
+.cp2-root-item.cp2-sort-insert-after::after,
+.cp2-persona-sort-item.cp2-sort-insert-after::after { bottom: 0; }
 .cp2-sort-chosen {
   outline: 1px solid var(--SmartThemeQuoteColor);
 }
@@ -689,6 +734,10 @@ body.square-avatars .cp2-picker-avatar {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+.cp2-manager-item-actions .menu_button:disabled {
+  cursor: not-allowed;
+  opacity: 0.28;
 }
 .cp2-manager-move-dialog .text_pole {
   width: 100%;
