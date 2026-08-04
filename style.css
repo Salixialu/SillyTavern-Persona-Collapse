@@ -135,8 +135,33 @@
   border-bottom: 1px solid var(--SmartThemeBorderColor);
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 4px;
+}
+.cp2-surface-persona-slot {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.cp2-surface-persona {
+  max-width: min(320px, 100%);
+  min-height: 30px;
+  margin: 0;
+  padding: 2px 5px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.cp2-surface-persona .cp2-variant-avatar {
+  width: 25px;
+  height: 25px;
+}
+.cp2-surface-persona .cp2-variant-name {
+  font-weight: 600;
+}
+.cp2-surface-indicator {
+  flex: 0 0 auto;
+  color: var(--SmartThemeQuoteColor);
+  opacity: 0.8;
 }
 .cp2-variants-header-actions {
   display: flex;
@@ -170,7 +195,7 @@
   opacity: 0.55;
 }
 .cp2-standalone-header {
-  justify-content: flex-end;
+  justify-content: space-between;
 }
 .cp2-standalone-header .cp2-toolbar-btn {
   flex: 0 0 30px;

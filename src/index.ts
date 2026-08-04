@@ -574,40 +574,6 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
   const parentId = manager.findParentOf(currentId) || currentId;
   const children = effectiveGroups[parentId] || [];
 
-  // 独立人设：隐藏马甲面板
-
-  if (children.length === 0) {
-    teardownBranchSortables();
-    if (!force && currentId === lastPanelPersonaId && lastPanelGroupKey === null && !variantsPanelDirty) return;
-    // 独立人设：只显示管理按钮，方便快速组建分支
-    panel.style.display = 'block';
-    panel.innerHTML = `
-      <div class="cp2-variants-header cp2-standalone-header">
-        <button class="menu_button cp2-toolbar-btn" id="cp2-create-persona" title="新建人设" aria-label="新建人设">
-          <i class="fa-solid fa-user-plus"></i>
-        </button>
-        <button class="menu_button cp2-toolbar-btn" id="cp2-add-branch-btn" title="组建或管理当前角色的分支" aria-label="组建或管理当前角色的分支">
-          <i class="fa-solid fa-users-gear"></i>
-        </button>
-      </div>
-    `;
-
-    panel.querySelector('#cp2-create-persona')?.addEventListener('click', async e => {
-      e.stopPropagation();
-      await createPersonaInBranch(parentId);
-    });
-    
-    panel.querySelector('#cp2-add-branch-btn')?.addEventListener('click', e => {
-      e.stopPropagation();
-      openGroupManager(parentId);
-    });
-
-    lastPanelPersonaId = currentId;
-    lastPanelGroupKey = null;
-    variantsPanelDirty = false;
-    return;
-  }
-
   const layout = manager.getBranchLayout(parentId, children);
   const subgroupEntries = manager.getSettings().subgroups[parentId] || [];
   const subgroupById = new Map(subgroupEntries.map(group => [group.id, group]));
@@ -634,6 +600,7 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
   // 使用原生风格工具栏，避免额外标题占用列表空间。
   const headerHTML = `
     <div class="cp2-variants-header" role="toolbar" aria-label="${escapeHtml(tUi('personaCollapse.branchActions', '人设分支操作'))}">
+      <div class="cp2-surface-persona-slot"></div>
       <div class="cp2-variants-header-actions">
         <button class="menu_button cp2-toolbar-btn" id="cp2-create-persona" title="新建人设" aria-label="新建人设">
           <i class="fa-solid fa-user-plus"></i>
@@ -677,13 +644,14 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
     options: {
       isEntry?: boolean;
       subgroupId?: string | null;
+      surface?: boolean;
     } = {},
   ): HTMLElement => {
-    const { isEntry = false, subgroupId = null } = options;
+    const { isEntry = false, subgroupId = null, surface = false } = options;
     const isCurrentUser = memberId === currentId;
 
     const item = document.createElement('div');
-    item.className = `cp2-variant-item cp2-persona-sort-item${subgroupId ? '' : ' cp2-root-item'}${isCurrentUser ? ' active' : ''}`;
+    item.className = `cp2-variant-item cp2-persona-sort-item${subgroupId ? '' : ' cp2-root-item'}${surface ? ' cp2-surface-persona' : ''}${isCurrentUser ? ' active' : ''}`;
     item.dataset.personaId = memberId;
     item.dataset.layoutType = 'persona';
     if (subgroupId) item.dataset.subgroupId = subgroupId;
@@ -693,11 +661,13 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
     avatar.className = 'cp2-variant-avatar';
     avatar.onerror = () => { avatar.src = '/img/ai4.png'; };
 
-    const dragHandle = document.createElement('i');
-    dragHandle.className = 'fa-solid fa-grip-lines cp2-sort-handle cp2-variant-drag-handle';
-    dragHandle.title = '拖拽排序';
-    dragHandle.style.setProperty('--cp2-drag-accent', subgroupAccentById.get(subgroupId || '') || 'var(--SmartThemeBodyColor)');
-    item.appendChild(dragHandle);
+    if (!surface) {
+      const dragHandle = document.createElement('i');
+      dragHandle.className = 'fa-solid fa-grip-lines cp2-sort-handle cp2-variant-drag-handle';
+      dragHandle.title = '拖拽排序';
+      dragHandle.style.setProperty('--cp2-drag-accent', subgroupAccentById.get(subgroupId || '') || 'var(--SmartThemeBodyColor)');
+      item.appendChild(dragHandle);
+    }
 
     const name = getPersonaName(memberId);
     const title = getPersonaTitle(memberId);
@@ -757,7 +727,13 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
       actions.appendChild(bindingWrap);
     }
 
-    if (isEntry) {
+    if (surface) {
+      const surfaceIcon = document.createElement('i');
+      surfaceIcon.className = 'fa-solid fa-layer-group cp2-surface-indicator';
+      surfaceIcon.title = tUi('personaCollapse.branchSurfaceEntry', '当前分支入口');
+      surfaceIcon.setAttribute('aria-label', surfaceIcon.title);
+      actions.appendChild(surfaceIcon);
+    } else if (isEntry) {
       const entryIcon = document.createElement('i');
       entryIcon.className = 'fa-solid fa-eye cp2-entry-indicator';
       entryIcon.title = tUi('personaCollapse.leftListEntry', '左侧列表入口');
@@ -809,6 +785,9 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
       };
     return item;
   };
+
+  const surfaceSlot = panel.querySelector<HTMLElement>('.cp2-surface-persona-slot');
+  surfaceSlot?.appendChild(createPersonaItem(parentId, { isEntry: true, surface: true }));
 
   const createSubgroupSection = (groupId: string): HTMLElement => {
     const subgroup = subgroupById.get(groupId);
@@ -931,7 +910,8 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
 
   for (const item of layout.root) {
     if (item.type === 'persona') {
-      list.appendChild(createPersonaItem(item.id, { isEntry: item.id === parentId }));
+      if (item.id === parentId) continue;
+      list.appendChild(createPersonaItem(item.id));
     } else {
       list.appendChild(createSubgroupSection(item.id));
     }
@@ -952,7 +932,12 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
   destroyBranchSortables = mountBranchSortables({
     root: list,
     onCommit: snapshot => {
-      const newEntryId = manager.applyBranchLayoutSnapshot(parentId, snapshot, children);
+      // 入口固定在顶栏，不参与拖拽；补回快照首位后复用原有布局校验。
+      const nextSnapshot = {
+        ...snapshot,
+        root: [{ type: 'persona' as const, id: parentId }, ...snapshot.root],
+      };
+      const newEntryId = manager.applyBranchLayoutSnapshot(parentId, nextSnapshot, children);
       if (!newEntryId) return false;
       queueMicrotask(() => {
         renderAvatarBlock();

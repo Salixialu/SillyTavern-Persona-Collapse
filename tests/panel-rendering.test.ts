@@ -18,6 +18,11 @@ describe('persona branch panel rendering', () => {
     expect(panelSource).toContain('async function editPersonaTags');
     expect(panelSource).toContain('cp2-persona-tags');
     expect(panelSource).toContain('fa-tags');
+    expect(panelSource).toContain('cp2-surface-persona-slot');
+    expect(panelSource).toContain('surface?: boolean');
+    expect(panelSource).toContain('surface: true');
+    expect(panelSource).toContain('if (item.id === parentId) continue;');
+    expect(panelSource).toContain('入口固定在顶栏');
     expect(panelSource).toContain("subgroupId ? '' : ' cp2-root-item'");
     expect(panelSource).not.toContain('cp2-subgroup-select');
     expect(panelSource).not.toContain("tUi('personaCollapse.removeFromSubgroup', '移出分组')");
