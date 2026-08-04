@@ -853,6 +853,16 @@ body.square-avatars .cp2-picker-avatar {
   cursor: not-allowed;
   opacity: 0.28;
 }
+.cp2-manager-item-actions .cp2-remove-btn {
+  color: var(--SmartThemeBodyColor);
+  opacity: 0.58;
+}
+.cp2-manager-item-actions .cp2-remove-btn:hover {
+  color: var(--warning-color, #d35f5f);
+  border-color: var(--warning-color, #d35f5f);
+  background: rgba(211, 95, 95, 0.12);
+  opacity: 1;
+}
 .cp2-manager-subgroup {
   border: 1px solid var(--SmartThemeBorderColor);
   border-radius: 6px;

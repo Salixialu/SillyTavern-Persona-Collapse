@@ -963,7 +963,7 @@ function openGroupManager(initialParentId: string): void {
     const controls = isEntry ? `
       <span class="cp2-manager-entry-label"><i class="fa-solid fa-eye"></i> 入口</span>
     ` : `
-      <button class="menu_button cp2-remove-btn" data-id="${escapeHtml(id)}" title="移出分支"><i class="fa-solid fa-xmark"></i></button>
+      <button class="cp2-icon-btn cp2-remove-btn" data-id="${escapeHtml(id)}" title="移出分支，回到独立人设" aria-label="移出分支，回到独立人设"><i class="fa-solid fa-xmark"></i></button>
     `;
     const tags = manager.getPersonaTags(id);
     const tagHtml = tags.length > 0

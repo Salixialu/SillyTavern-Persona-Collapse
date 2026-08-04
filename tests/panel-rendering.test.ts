@@ -41,6 +41,8 @@ describe('persona branch panel rendering', () => {
     expect(panelSource).toContain('cp2-mgr-create-subgroup');
     expect(panelSource).not.toContain('cp2-mgr-move-btn');
     expect(panelSource).not.toContain('cp2-mgr-order-btn');
+    expect(panelSource).toContain('cp2-icon-btn cp2-remove-btn');
+    expect(panelSource).toContain('移出分支，回到独立人设');
     expect(panelSource).not.toContain('cp2-mgr-entry-btn');
     expect(panelSource).not.toContain('一键设为主卡');
     expect(panelSource).toContain('cp2-manager-drag-handle');
