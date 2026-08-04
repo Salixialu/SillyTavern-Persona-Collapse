@@ -165,10 +165,12 @@
 }
 .cp2-standalone-header {
   justify-content: center;
+  gap: 4px;
 }
 .cp2-standalone-header .cp2-toolbar-btn {
+  flex: 1 1 0;
   justify-content: center;
-  width: 100%;
+  width: auto;
 }
 .cp2-icon-btn {
   width: 24px;
@@ -464,15 +466,44 @@ body.square-avatars .cp2-variant-avatar {
   flex-direction: column;
   justify-content: center;
 }
+.cp2-variant-name-row {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
 .cp2-variant-name {
+  min-width: 0;
   font-size: 0.9em;
   font-weight: bold;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  display: flex;
+  flex: 0 1 auto;
+}
+.cp2-persona-tags {
+  min-width: 0;
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+}
+.cp2-persona-tag {
+  max-width: 120px;
+  overflow: hidden;
+  padding: 2px 7px;
+  border: 1px solid var(--SmartThemeBorderColor);
+  border-radius: 999px;
+  background: var(--black20a);
+  color: var(--SmartThemeBodyColor);
+  font-size: 0.72em;
+  font-weight: normal;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.72;
 }
 .cp2-variant-note {
   font-size: 0.78em;
@@ -517,6 +548,9 @@ body.square-avatars .cp2-variant-avatar {
   opacity: 0.35 !important;
 }
 @media (max-width: 520px) {
+  .cp2-standalone-header {
+    flex-wrap: wrap;
+  }
   .cp2-variant-actions {
     gap: 2px;
     margin-left: 4px;

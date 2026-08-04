@@ -13,6 +13,11 @@ describe('persona branch panel rendering', () => {
     expect(panelSource).toContain("tUi('personaCollapse.leftListEntry', '左侧列表入口')");
     expect(panelSource).toContain("tUi('personaCollapse.renameSubgroup', '重命名分组')");
     expect(panelSource).toContain("tUi('personaCollapse.deleteSubgroup', '删除分组')");
+    expect(panelSource).toContain('async function createPersonaInBranch');
+    expect(panelSource).toContain('manager.linkChildAtEnd(parentId, avatarId)');
+    expect(panelSource).toContain('async function editPersonaTags');
+    expect(panelSource).toContain('cp2-persona-tags');
+    expect(panelSource).toContain('fa-tags');
     expect(panelSource).toContain("subgroupId ? '' : ' cp2-root-item'");
     expect(panelSource).not.toContain('cp2-subgroup-select');
     expect(panelSource).not.toContain("tUi('personaCollapse.removeFromSubgroup', '移出分组')");

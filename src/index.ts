@@ -110,6 +110,13 @@ function buildAvatarId(personaName: string): string {
   return avatarId;
 }
 
+function parsePersonaTags(value: string): string[] {
+  return value
+    .split(/[,，]/)
+    .map(tag => tag.trim())
+    .filter(Boolean);
+}
+
 async function uploadPersonaAvatar(sourceUrl: string, avatarId: string): Promise<void> {
   const fetchResult = await fetch(sourceUrl);
   if (!fetchResult.ok) {
@@ -167,6 +174,69 @@ async function createPersonaRecord(
     saveSettingsDebounced();
     await eventSource.emit(event_types.PERSONA_CREATED, { avatarId, name: newName, description, title });
   }
+}
+
+async function createPersonaInBranch(parentId: string): Promise<void> {
+  await loadPersonasApi();
+  let personaTitle = '';
+  const personaName = await Popup.show.input(
+    tUi('personaCollapse.createPersona', '新建人设'),
+    tUi('personaCollapse.personaNamePrompt', '输入此用户设定的名称：'),
+    '',
+    {
+      customInputs: [{
+        id: 'cp2-persona-title',
+        type: 'text',
+        label: tUi('personaCollapse.personaTitle', '用户设定标题（可选，仅显示）'),
+        defaultState: '',
+      }],
+      onClose: (popup: { inputResults?: Map<string, unknown> }) => {
+        personaTitle = String(popup.inputResults?.get('cp2-persona-title') ?? '').trim();
+      },
+    },
+  );
+  if (!personaName || typeof personaName !== 'string' || !personaName.trim()) return;
+
+  const trimmedName = personaName.trim();
+  const avatarId = buildAvatarId(trimmedName);
+  if (personasModule?.initPersona) {
+    await personasModule.initPersona(avatarId, trimmedName, '', personaTitle);
+  } else {
+    power_user.personas[avatarId] = trimmedName;
+    power_user.persona_descriptions[avatarId] = { description: '', title: personaTitle };
+    saveSettingsDebounced();
+    await eventSource.emit(event_types.PERSONA_CREATED, {
+      avatarId,
+      name: trimmedName,
+      description: '',
+      title: personaTitle,
+    });
+  }
+
+  try {
+    await uploadPersonaAvatar(default_user_avatar, avatarId);
+  } catch (error) {
+    console.warn(LOG_PREFIX, '新建人设头像上传失败，将使用酒馆默认头像:', error);
+  }
+
+  manager.initGroup(parentId);
+  manager.linkChildAtEnd(parentId, avatarId);
+  await personasModule?.getUserAvatars?.(true, parentId);
+  renderAvatarBlock();
+  renderVariantsPanel(true);
+  toastr.success(`已新建【${trimmedName}】并追加到当前分支`);
+}
+
+async function editPersonaTags(personaId: string): Promise<void> {
+  const currentTags = manager.getPersonaTags(personaId);
+  const value = await Popup.show.input(
+    tUi('personaCollapse.editTags', '编辑人设标签'),
+    tUi('personaCollapse.tagsPrompt', '多个标签请用逗号分隔：'),
+    currentTags.join(', '),
+  );
+  if (value === null) return;
+  manager.setPersonaTags(personaId, parsePersonaTags(value || ''));
+  renderVariantsPanel(true);
 }
 
 async function duplicatePersonaIntoGroup(parentId: string, sourceId: string): Promise<void> {
@@ -513,11 +583,19 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
     panel.style.display = 'block';
     panel.innerHTML = `
       <div class="cp2-variants-header cp2-standalone-header">
+        <button class="menu_button cp2-toolbar-btn" id="cp2-create-persona" title="新建人设">
+          <i class="fa-solid fa-user-plus"></i><span>新建人设</span>
+        </button>
         <button class="menu_button cp2-toolbar-btn" id="cp2-add-branch-btn" title="组建或管理当前角色的分支">
           <i class="fa-solid fa-users-gear"></i><span>管理分支</span>
         </button>
       </div>
     `;
+
+    panel.querySelector('#cp2-create-persona')?.addEventListener('click', async e => {
+      e.stopPropagation();
+      await createPersonaInBranch(parentId);
+    });
     
     panel.querySelector('#cp2-add-branch-btn')?.addEventListener('click', e => {
       e.stopPropagation();
@@ -557,6 +635,9 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
   const headerHTML = `
     <div class="cp2-variants-header" role="toolbar" aria-label="${escapeHtml(tUi('personaCollapse.branchActions', '人设分支操作'))}">
       <div class="cp2-variants-header-actions">
+        <button class="menu_button cp2-toolbar-btn" id="cp2-create-persona" title="新建人设" aria-label="新建人设">
+          <i class="fa-solid fa-user-plus"></i><span>新建人设</span>
+        </button>
         <button class="menu_button cp2-toolbar-btn" id="cp2-create-subgroup" title="${escapeHtml(tUi('personaCollapse.createSubgroup', '新建分组'))}" aria-label="${escapeHtml(tUi('personaCollapse.createSubgroup', '新建分组'))}">
           <i class="fa-solid fa-folder-plus"></i><span>${escapeHtml(tUi('personaCollapse.createSubgroup', '新建分组'))}</span>
         </button>
@@ -574,6 +655,11 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
   panel.querySelector('#cp2-add-branch-btn')?.addEventListener('click', e => {
     e.stopPropagation();
     openGroupManager(parentId);
+  });
+
+  panel.querySelector('#cp2-create-persona')?.addEventListener('click', async e => {
+    e.stopPropagation();
+    await createPersonaInBranch(parentId);
   });
 
   panel.querySelector('#cp2-create-subgroup')?.addEventListener('click', async e => {
@@ -618,13 +704,27 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
 
     const textDiv = document.createElement('div');
     textDiv.className = 'cp2-variant-text';
+    const tags = manager.getPersonaTags(memberId);
     textDiv.innerHTML = `
-      <div class="cp2-variant-name">${escapeHtml(name)}</div>
+      <div class="cp2-variant-name-row">
+        <span class="cp2-variant-name">${escapeHtml(name)}</span>
+        ${tags.length > 0 ? `<span class="cp2-persona-tags">${tags.map(tag => `<span class="cp2-persona-tag" title="${escapeHtml(tag)}">${escapeHtml(tag)}</span>`).join('')}</span>` : ''}
+      </div>
       ${title ? `<div class="cp2-variant-title">${escapeHtml(title)}</div>` : ''}
     `;
 
     const actions = document.createElement('div');
     actions.className = 'cp2-variant-actions';
+
+    const tagBtn = document.createElement('i');
+    tagBtn.className = 'fa-solid fa-tags cp2-variant-action-btn';
+    tagBtn.title = '添加或编辑标签';
+    tagBtn.setAttribute('aria-label', tagBtn.title);
+    tagBtn.onclick = async evt => {
+      evt.stopPropagation();
+      await editPersonaTags(memberId);
+    };
+    actions.appendChild(tagBtn);
 
     // 🔗 角色/聊天绑定状态展示（ST 原生 connections）
     const bindings = getPersonaBindings(memberId);
