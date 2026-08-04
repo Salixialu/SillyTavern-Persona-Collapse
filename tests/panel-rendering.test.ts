@@ -21,6 +21,7 @@ describe('persona branch panel rendering', () => {
     expect(panelSource).toContain('cp2-surface-persona-slot');
     expect(panelSource).toContain('surface?: boolean');
     expect(panelSource).toContain('surface: true');
+    expect(panelSource).not.toContain('cp2-surface-indicator');
     expect(panelSource).toContain('if (item.id === parentId) continue;');
     expect(panelSource).toContain('入口固定在顶栏');
     expect(panelSource).toContain("subgroupId ? '' : ' cp2-root-item'");

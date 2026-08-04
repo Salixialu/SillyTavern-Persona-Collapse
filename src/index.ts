@@ -727,13 +727,7 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
       actions.appendChild(bindingWrap);
     }
 
-    if (surface) {
-      const surfaceIcon = document.createElement('i');
-      surfaceIcon.className = 'fa-solid fa-layer-group cp2-surface-indicator';
-      surfaceIcon.title = tUi('personaCollapse.branchSurfaceEntry', '当前分支入口');
-      surfaceIcon.setAttribute('aria-label', surfaceIcon.title);
-      actions.appendChild(surfaceIcon);
-    } else if (isEntry) {
+    if (isEntry && !surface) {
       const entryIcon = document.createElement('i');
       entryIcon.className = 'fa-solid fa-eye cp2-entry-indicator';
       entryIcon.title = tUi('personaCollapse.leftListEntry', '左侧列表入口');

@@ -158,10 +158,9 @@
 .cp2-surface-persona .cp2-variant-name {
   font-weight: 600;
 }
-.cp2-surface-indicator {
-  flex: 0 0 auto;
-  color: var(--SmartThemeQuoteColor);
-  opacity: 0.8;
+.cp2-surface-persona.active {
+  border-color: transparent;
+  background: rgba(var(--SmartThemeQuoteColorRGB, 52, 152, 219), 0.08);
 }
 .cp2-variants-header-actions {
   display: flex;
