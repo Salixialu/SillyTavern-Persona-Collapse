@@ -1102,12 +1102,22 @@ function openGroupManager(initialParentId: string): void {
     const leftPane = document.getElementById('cp2-mgr-left');
     const rightPane = document.getElementById('cp2-mgr-right');
     const countEl = document.getElementById('cp2-mgr-count');
+    const leftTitle = document.getElementById('cp2-mgr-left-title');
+    const rightTitle = document.getElementById('cp2-mgr-right-title');
+    const searchInput = document.getElementById('cp2-mgr-search') as HTMLInputElement | null;
     if (!leftPane || !rightPane) return;
 
     if (independentSourceId && !selectedDestinationId) {
+      if (leftTitle) leftTitle.textContent = '当前独立人设';
+      if (rightTitle) rightTitle.textContent = '选择目标分支';
+      if (searchInput) searchInput.placeholder = '搜索目标分支...';
       renderIndependentDestinationPane(leftPane, rightPane, countEl);
       return;
     }
+
+    if (leftTitle) leftTitle.innerHTML = '可选独立人设 (<span id="cp2-mgr-count">0</span>)';
+    if (rightTitle) rightTitle.textContent = '当前分支列表';
+    if (searchInput) searchInput.placeholder = '搜索独立人设...';
 
     const effectiveGroups = manager.getEffectiveGroups();
     const children = effectiveGroups[currentParentId] || [];
@@ -1223,7 +1233,8 @@ function openGroupManager(initialParentId: string): void {
         window.setTimeout(() => subgroup.classList.remove('cp2-new-subgroup'), 900);
       });
     }
-    if (countEl) countEl.textContent = String(availableIds.length);
+    const currentCountEl = document.getElementById('cp2-mgr-count');
+    if (currentCountEl) currentCountEl.textContent = String(availableIds.length);
 
     // 左侧点击加入
     leftPane.querySelectorAll('.cp2-picker-item').forEach(el => {
@@ -1337,14 +1348,14 @@ function openGroupManager(initialParentId: string): void {
     </div>
     <div class="cp2-manager-columns">
       <div class="cp2-manager-pane">
-        <div class="cp2-manager-pane-title">可选独立人设 (<span id="cp2-mgr-count">0</span>)</div>
+        <div id="cp2-mgr-left-title" class="cp2-manager-pane-title">可选独立人设 (<span id="cp2-mgr-count">0</span>)</div>
         <div id="cp2-mgr-left" class="cp2-picker-list cp2-manager-list"></div>
       </div>
       <div class="cp2-manager-transfer-icon">
         <i class="fa-solid fa-right-left"></i>
       </div>
       <div class="cp2-manager-pane">
-        <div class="cp2-manager-pane-title">当前分支列表</div>
+        <div id="cp2-mgr-right-title" class="cp2-manager-pane-title">当前分支列表</div>
         <div id="cp2-mgr-right" class="cp2-picker-list cp2-manager-list"></div>
       </div>
     </div>
