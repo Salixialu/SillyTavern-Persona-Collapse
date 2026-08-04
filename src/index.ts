@@ -506,32 +506,6 @@ async function confirmSubgroupDeletion(subgroupName: string): Promise<boolean> {
   return (await popup.show()) !== null;
 }
 
-async function promptMovePersonaDestination(
-  currentSubgroupId: string | null,
-  subgroups: Array<{ id: string; name: string }>,
-): Promise<string | null | undefined> {
-  const wrapper = document.createElement('div');
-  wrapper.className = 'cp2-manager-move-dialog';
-  const select = document.createElement('select');
-  select.className = 'text_pole';
-  const destinations: Array<{ id: string | null; name: string }> = [{ id: null, name: '顶层' }, ...subgroups];
-  for (const destination of destinations) {
-    const option = document.createElement('option');
-    option.value = destination.id ?? '';
-    option.textContent = destination.name;
-    option.disabled = destination.id === currentSubgroupId;
-    select.appendChild(option);
-  }
-  wrapper.appendChild(select);
-
-  const popup = new Popup(wrapper, POPUP_TYPE.TEXT, '', {
-    okButton: tUi('personaCollapse.move', '移动'),
-    cancelButton: tUi('personaCollapse.cancel', '取消'),
-  });
-  const result = await popup.show();
-  return result === null ? undefined : (select.value || null);
-}
-
 function renderVariantsPanel(force = false, currentIdOverride: string | null = null): void {
   if (branchSortableDragging && !force) return;
   const selectedEl = document.querySelector('#user_avatar_block .avatar-container.selected');
@@ -967,6 +941,7 @@ function openGroupManager(initialParentId: string): void {
   let searchQuery = '';
   let filterMode: 'all' | 'samename' | 'samechar' = 'all';
   let pendingManagerSubgroupFocusId: string | null = null;
+  let destroyManagerSortables: (() => void) | null = null;
   const independentSourceId = manager.isIndependent(initialParentId) ? initialParentId : null;
   let selectedDestinationId: string | null = null;
 
@@ -978,33 +953,28 @@ function openGroupManager(initialParentId: string): void {
     options: {
       isEntry?: boolean;
       subgroupId?: string | null;
-      subgroups?: Array<{ id: string; name: string }>;
-      canMoveUp?: boolean;
-      canMoveDown?: boolean;
     } = {},
   ): string {
     const {
       isEntry = false,
       subgroupId = null,
-      subgroups = [],
-      canMoveUp = true,
-      canMoveDown = true,
     } = options;
     const name = getPersonaName(id);
-    const moveTitle = subgroupId ? '移动到顶层或其他分组' : '移动到分组';
     const controls = isEntry ? `
       <span class="cp2-manager-entry-label"><i class="fa-solid fa-eye"></i> 入口</span>
     ` : `
-      <button class="menu_button cp2-mgr-order-btn" data-id="${escapeHtml(id)}" data-direction="up" title="上移" aria-label="上移"${canMoveUp ? '' : ' disabled'}><i class="fa-solid fa-chevron-up"></i></button>
-      <button class="menu_button cp2-mgr-order-btn" data-id="${escapeHtml(id)}" data-direction="down" title="下移" aria-label="下移"${canMoveDown ? '' : ' disabled'}><i class="fa-solid fa-chevron-down"></i></button>
-      <button class="menu_button cp2-mgr-move-btn" data-id="${escapeHtml(id)}" data-subgroup-id="${escapeHtml(subgroupId || '')}" title="${moveTitle}" aria-label="${moveTitle}"><i class="fa-solid fa-right-left"></i></button>
       <button class="menu_button cp2-remove-btn" data-id="${escapeHtml(id)}" title="移出分支"><i class="fa-solid fa-xmark"></i></button>
     `;
+    const tags = manager.getPersonaTags(id);
+    const tagHtml = tags.length > 0
+      ? `<span class="cp2-persona-tags">${tags.map(tag => `<span class="cp2-persona-tag" title="${escapeHtml(tag)}">${escapeHtml(tag)}</span>`).join('')}</span>`
+      : '';
 
     return `
-      <div class="cp2-picker-item cp2-manager-persona-item${isEntry ? ' cp2-manager-parent' : ''}" data-id="${escapeHtml(id)}">
+      <div class="cp2-picker-item cp2-manager-persona-item cp2-persona-sort-item${subgroupId ? '' : ' cp2-root-item'}${isEntry ? ' cp2-manager-parent' : ''}" data-id="${escapeHtml(id)}" data-persona-id="${escapeHtml(id)}" data-layout-type="persona"${subgroupId ? ` data-subgroup-id="${escapeHtml(subgroupId)}"` : ''}>
+        <i class="fa-solid fa-grip-lines cp2-sort-handle cp2-manager-drag-handle" title="拖拽排序、移入或移出分组"></i>
         <img class="cp2-picker-avatar" src="${getThumbUrl(id)}" />
-        <span class="cp2-picker-name">${isEntry ? `<b>${escapeHtml(name)}</b>` : escapeHtml(name)}</span>
+        <span class="cp2-picker-name">${isEntry ? `<b>${escapeHtml(name)}</b>` : escapeHtml(name)}${tagHtml}</span>
         <div class="cp2-manager-item-actions">${controls}</div>
       </div>
     `;
@@ -1108,6 +1078,8 @@ function openGroupManager(initialParentId: string): void {
     if (!leftPane || !rightPane) return;
 
     if (independentSourceId && !selectedDestinationId) {
+      destroyManagerSortables?.();
+      destroyManagerSortables = null;
       if (leftTitle) leftTitle.textContent = '当前独立人设';
       if (rightTitle) rightTitle.textContent = '选择目标分支';
       if (searchInput) searchInput.placeholder = '搜索目标分支...';
@@ -1124,7 +1096,6 @@ function openGroupManager(initialParentId: string): void {
     const layout = manager.getBranchLayout(currentParentId, children);
     const subgroups = manager.getSettings().subgroups[currentParentId] || [];
     const subgroupById = new Map(subgroups.map(group => [group.id, group]));
-    const subgroupOptions = subgroups.map(group => ({ id: group.id, name: group.name }));
     const groupedIds = new Set<string>();
     for (const [pid, cids] of Object.entries(effectiveGroups)) {
       groupedIds.add(pid);
@@ -1158,10 +1129,14 @@ function openGroupManager(initialParentId: string): void {
     for (const id of availableIds) {
       const name = getPersonaName(id);
       const thumbUrl = getThumbUrl(id);
+      const tags = manager.getPersonaTags(id);
+      const tagHtml = tags.length > 0
+        ? `<span class="cp2-persona-tags">${tags.map(tag => `<span class="cp2-persona-tag" title="${escapeHtml(tag)}">${escapeHtml(tag)}</span>`).join('')}</span>`
+        : '';
       leftHtml += `
         <div class="cp2-picker-item" data-id="${id}" title="点击移入分支">
           <img class="cp2-picker-avatar" src="${thumbUrl}" />
-          <span class="cp2-picker-name">${escapeHtml(name)}</span>
+          <span class="cp2-picker-name">${escapeHtml(name)}${tagHtml}</span>
           <i class="fa-solid fa-arrow-right" style="opacity: 0.5;"></i>
         </div>
       `;
@@ -1180,14 +1155,9 @@ function openGroupManager(initialParentId: string): void {
 
     for (const item of layout.root) {
       if (item.type === 'persona') {
-        const rootPersonas = layout.root.filter(rootItem => rootItem.type === 'persona');
-        const rootIndex = rootPersonas.findIndex(rootItem => rootItem.type === 'persona' && rootItem.id === item.id);
         rightHtml += renderManagerPersonaItem(item.id, {
           isEntry: item.id === currentParentId,
           subgroupId: null,
-          subgroups: subgroupOptions,
-          canMoveUp: item.id !== currentParentId && rootIndex > 0,
-          canMoveDown: item.id !== currentParentId && rootIndex >= 0 && rootIndex < rootPersonas.length - 1,
         });
         continue;
       }
@@ -1197,7 +1167,7 @@ function openGroupManager(initialParentId: string): void {
       const groupName = subgroup?.name || item.id;
       const collapsed = subgroup?.collapsed ?? false;
       rightHtml += `
-        <div class="cp2-manager-subgroup${collapsed ? ' is-collapsed' : ''}" data-subgroup-id="${escapeHtml(item.id)}">
+        <div class="cp2-manager-subgroup cp2-subgroup cp2-root-item${collapsed ? ' is-collapsed' : ''}" data-subgroup-id="${escapeHtml(item.id)}" data-layout-type="subgroup">
           <div class="cp2-manager-subgroup-header">
             <button class="cp2-icon-btn cp2-mgr-toggle-subgroup" data-subgroup-id="${escapeHtml(item.id)}" title="${collapsed ? '展开分组' : '折叠分组'}">
               <i class="fa-solid fa-chevron-${collapsed ? 'right' : 'down'}"></i>
@@ -1207,14 +1177,11 @@ function openGroupManager(initialParentId: string): void {
             <button class="cp2-icon-btn cp2-mgr-rename-subgroup" data-subgroup-id="${escapeHtml(item.id)}" title="重命名分组"><i class="fa-solid fa-pencil"></i></button>
             <button class="cp2-icon-btn cp2-subgroup-delete cp2-mgr-delete-subgroup" data-subgroup-id="${escapeHtml(item.id)}" title="删除分组"><i class="fa-solid fa-trash"></i></button>
           </div>
-          <div class="cp2-manager-subgroup-items">
-            ${memberIds.map((id, memberIndex) => renderManagerPersonaItem(id, {
+          <div class="cp2-subgroup-body"><div class="cp2-manager-subgroup-items cp2-subgroup-items">
+            ${memberIds.map(id => renderManagerPersonaItem(id, {
               subgroupId: item.id,
-              subgroups: subgroupOptions,
-              canMoveUp: memberIndex > 0,
-              canMoveDown: memberIndex < memberIds.length - 1,
             })).join('')}
-          </div>
+          </div></div>
         </div>
       `;
     }
@@ -1222,6 +1189,8 @@ function openGroupManager(initialParentId: string): void {
 
     leftPane.innerHTML = leftHtml;
     rightPane.innerHTML = rightHtml;
+    destroyManagerSortables?.();
+    destroyManagerSortables = null;
     if (pendingManagerSubgroupFocusId) {
       const focusId = pendingManagerSubgroupFocusId;
       pendingManagerSubgroupFocusId = null;
@@ -1260,28 +1229,35 @@ function openGroupManager(initialParentId: string): void {
       });
     });
 
-    // 右侧上下移动：顶层只在顶层人设之间移动，分组内只在当前分组内移动。
-    rightPane.querySelectorAll('.cp2-mgr-order-btn').forEach(el => {
-      el.addEventListener('click', e => {
-        e.stopPropagation();
-        const id = (el as HTMLElement).dataset.id;
-        const direction = (el as HTMLElement).dataset.direction;
-        if (id && (direction === 'up' || direction === 'down') &&
-          manager.movePersonaVertically(currentParentId, id, direction, children)) renderPanes();
+    const managerBranch = rightPane.querySelector<HTMLElement>('.cp2-manager-branch');
+    if (managerBranch) {
+      destroyManagerSortables = mountBranchSortables({
+        root: managerBranch,
+        onCommit: snapshot => {
+          const newEntryId = manager.applyBranchLayoutSnapshot(currentParentId, snapshot, children);
+          if (!newEntryId) return false;
+          currentParentId = newEntryId;
+          queueMicrotask(() => {
+            renderAvatarBlock();
+            renderVariantsPanel(true, newEntryId);
+            renderPanes();
+          });
+          return true;
+        },
+        onReject: () => renderPanes(),
+        onExpandSubgroup: (subgroupId, section) => {
+          if (manager.setSubgroupCollapsed(currentParentId, subgroupId, false)) {
+            section.classList.remove('is-collapsed');
+            const toggle = section.querySelector<HTMLElement>('.cp2-mgr-toggle-subgroup');
+            if (toggle) {
+              toggle.title = '折叠分组';
+              toggle.innerHTML = '<i class="fa-solid fa-chevron-down"></i>';
+            }
+          }
+        },
+        onDragStateChange: () => undefined,
       });
-    });
-
-    rightPane.querySelectorAll('.cp2-mgr-move-btn').forEach(el => {
-      el.addEventListener('click', async e => {
-        e.stopPropagation();
-        const id = (el as HTMLElement).dataset.id;
-        if (!id) return;
-        const currentSubgroupId = (el as HTMLElement).dataset.subgroupId || null;
-        const subgroupId = await promptMovePersonaDestination(currentSubgroupId, subgroupOptions);
-        if (subgroupId === undefined) return;
-        if (manager.movePersonaToSubgroup(currentParentId, id, subgroupId, children)) renderPanes();
-      });
-    });
+    }
 
     rightPane.querySelector('#cp2-mgr-create-subgroup')?.addEventListener('click', async e => {
       e.stopPropagation();

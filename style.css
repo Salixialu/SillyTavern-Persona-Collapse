@@ -808,6 +808,18 @@ body.square-avatars .cp2-picker-avatar {
   min-width: 0;
   flex: 1 1 auto;
 }
+.cp2-manager-drag-handle {
+  flex: 0 0 14px;
+  margin: 0 2px 0 -2px;
+  opacity: 0.45;
+  cursor: grab;
+}
+.cp2-manager-drag-handle:active {
+  cursor: grabbing;
+}
+.cp2-manager-persona-item .cp2-persona-tags {
+  margin-left: 6px;
+}
 .cp2-manager-parent {
   background: rgba(var(--SmartThemeQuoteColorRGB, 52, 152, 219), 0.15);
   border-color: var(--SmartThemeQuoteColor, #3498db);
@@ -840,9 +852,6 @@ body.square-avatars .cp2-picker-avatar {
 .cp2-manager-item-actions .menu_button:disabled {
   cursor: not-allowed;
   opacity: 0.28;
-}
-.cp2-manager-move-dialog .text_pole {
-  width: 100%;
 }
 .cp2-manager-subgroup {
   border: 1px solid var(--SmartThemeBorderColor);

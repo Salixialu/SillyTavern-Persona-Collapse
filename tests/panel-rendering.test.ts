@@ -39,16 +39,15 @@ describe('persona branch panel rendering', () => {
 
   it('renders stable subgroup controls in the manager popup', () => {
     expect(panelSource).toContain('cp2-mgr-create-subgroup');
-    expect(panelSource).toContain('cp2-mgr-move-btn');
-    expect(panelSource).toContain('cp2-mgr-order-btn');
+    expect(panelSource).not.toContain('cp2-mgr-move-btn');
+    expect(panelSource).not.toContain('cp2-mgr-order-btn');
     expect(panelSource).not.toContain('cp2-mgr-entry-btn');
     expect(panelSource).not.toContain('一键设为主卡');
-    expect(panelSource).toContain('移动到分组');
-    expect(panelSource).toContain('移动到顶层或其他分组');
+    expect(panelSource).toContain('cp2-manager-drag-handle');
+    expect(panelSource).toContain('manager.applyBranchLayoutSnapshot(currentParentId, snapshot, children)');
     expect(panelSource).toContain('cp2-manager-subgroup');
-    expect(panelSource).toContain('async function promptMovePersonaDestination');
-    expect(panelSource).toContain('const subgroupId = await promptMovePersonaDestination');
-    expect(panelSource).toContain('manager.movePersonaToSubgroup(currentParentId, id, subgroupId, children)');
+    expect(panelSource).not.toContain('promptMovePersonaDestination');
+    expect(panelSource).not.toContain('manager.movePersonaToSubgroup(currentParentId, id, subgroupId, children)');
     expect(panelSource).toContain('renderIndependentDestinationPane');
     expect(panelSource).toContain('manager.isIndependent(initialParentId)');
     expect(panelSource).toContain('cp2-manager-target-branch');
@@ -112,7 +111,7 @@ describe('persona branch panel rendering', () => {
     expect(panelSource).toContain('clearInterval(panelInterval);');
     expect(panelSource).toContain('bodyObserver.disconnect();');
     expect(panelSource).toContain('pendingSubgroupFocusId');
-    expect(panelSource).toContain('canMoveUp');
-    expect(panelSource).toContain('disabled');
+    expect(panelSource).not.toContain('canMoveUp');
+    expect(panelSource).not.toContain('cp2-mgr-order-btn');
   });
 });
