@@ -967,6 +967,8 @@ function openGroupManager(initialParentId: string): void {
   let searchQuery = '';
   let filterMode: 'all' | 'samename' | 'samechar' = 'all';
   let pendingManagerSubgroupFocusId: string | null = null;
+  const independentSourceId = manager.isIndependent(initialParentId) ? initialParentId : null;
+  let selectedDestinationId: string | null = null;
 
   const allIds = Array.from(document.querySelectorAll('#user_avatar_block .avatar-container'))
     .map(getAvatarId).filter(Boolean) as string[];
@@ -1008,7 +1010,105 @@ function openGroupManager(initialParentId: string): void {
     `;
   }
 
+  function getBranchBaseName(id: string): string {
+    const name = getPersonaName(id);
+    return name.match(/^(.+?)\s*[-_]\s*.+$/)?.[1].trim() || name.trim();
+  }
+
+  function renderIndependentDestinationPane(
+    leftPane: HTMLElement,
+    rightPane: HTMLElement,
+    countEl: HTMLElement | null,
+  ): void {
+    if (!independentSourceId) return;
+
+    const sourceName = getPersonaName(independentSourceId);
+    const sourceBindings = getPersonaBindings(independentSourceId)
+      .filter(connection => connection.type === 'character')
+      .map(connection => connection.id);
+    const branchIds = Array.from(new Set(
+      Object.keys(manager.getEffectiveGroups()).filter(id =>
+        id !== independentSourceId && manager.findParentOf(id) === null,
+      ),
+    )).filter(id => {
+      if (!searchQuery) return true;
+      return getPersonaName(id).toLowerCase().includes(searchQuery.toLowerCase());
+    }).filter(id => {
+      if (filterMode === 'samename') return getBranchBaseName(id) === getBranchBaseName(independentSourceId);
+      if (filterMode === 'samechar') {
+        const bindings = getPersonaBindings(id)
+          .filter(connection => connection.type === 'character')
+          .map(connection => connection.id);
+        return bindings.some(binding => sourceBindings.includes(binding));
+      }
+      return true;
+    });
+
+    leftPane.innerHTML = `
+      <div class="cp2-manager-source-card">
+        <img class="cp2-picker-avatar" src="${getThumbUrl(independentSourceId)}" />
+        <div class="cp2-manager-source-copy">
+          <strong>${escapeHtml(sourceName)}</strong>
+          <span>当前为独立人设</span>
+        </div>
+      </div>
+      <button id="cp2-mgr-create-current-group" class="menu_button cp2-manager-primary-action">
+        <i class="fa-solid fa-folder-plus"></i> 以此人设建立新分支
+      </button>
+    `;
+    rightPane.innerHTML = branchIds.length > 0
+      ? branchIds.map(id => {
+        const count = manager.getEffectiveGroups()[id]?.length ?? 0;
+        return `
+          <button class="cp2-manager-target-branch" data-id="${escapeHtml(id)}" title="将${escapeHtml(sourceName)}移入此分支">
+            <img class="cp2-picker-avatar" src="${getThumbUrl(id)}" />
+            <span class="cp2-manager-target-copy">
+              <strong>${escapeHtml(manager.getGroupName(id, getPersonaName(id)))}</strong>
+              <span>${count} 个人设 · ${escapeHtml(getPersonaName(id))}</span>
+            </span>
+            <i class="fa-solid fa-arrow-right"></i>
+          </button>
+        `;
+      }).join('')
+      : '<div class="cp2-manager-empty-state">没有符合条件的已有分支</div>';
+
+    if (countEl) countEl.textContent = String(branchIds.length);
+
+    leftPane.querySelector('#cp2-mgr-create-current-group')?.addEventListener('click', e => {
+      e.stopPropagation();
+      manager.initGroup(independentSourceId);
+      currentParentId = independentSourceId;
+      selectedDestinationId = independentSourceId;
+      renderPanes();
+    });
+
+    rightPane.querySelectorAll<HTMLButtonElement>('.cp2-manager-target-branch').forEach(button => {
+      button.addEventListener('click', e => {
+        e.stopPropagation();
+        const targetId = button.dataset.id;
+        if (!targetId) return;
+        manager.linkChild(targetId, independentSourceId);
+        currentParentId = targetId;
+        selectedDestinationId = targetId;
+        toastr.success(`已将【${sourceName}】移入【${getPersonaName(targetId)}】分支`);
+        renderAvatarBlock();
+        renderVariantsPanel(true, targetId);
+        renderPanes();
+      });
+    });
+  }
+
   function renderPanes() {
+    const leftPane = document.getElementById('cp2-mgr-left');
+    const rightPane = document.getElementById('cp2-mgr-right');
+    const countEl = document.getElementById('cp2-mgr-count');
+    if (!leftPane || !rightPane) return;
+
+    if (independentSourceId && !selectedDestinationId) {
+      renderIndependentDestinationPane(leftPane, rightPane, countEl);
+      return;
+    }
+
     const effectiveGroups = manager.getEffectiveGroups();
     const children = effectiveGroups[currentParentId] || [];
     const layout = manager.getBranchLayout(currentParentId, children);
@@ -1109,11 +1209,6 @@ function openGroupManager(initialParentId: string): void {
       `;
     }
     rightHtml += '</div>';
-
-    const leftPane = document.getElementById('cp2-mgr-left');
-    const rightPane = document.getElementById('cp2-mgr-right');
-    const countEl = document.getElementById('cp2-mgr-count');
-    if (!leftPane || !rightPane) return;
 
     leftPane.innerHTML = leftHtml;
     rightPane.innerHTML = rightHtml;

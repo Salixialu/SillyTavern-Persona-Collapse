@@ -20,6 +20,17 @@ const completeSettings = (overrides: Partial<GroupSettings> = {}): GroupSettings
 describe('GroupManager subgroup migration', () => {
   beforeEach(() => vi.useFakeTimers());
 
+  it('moves an independent persona into an existing branch', () => {
+    const manager = new GroupManager(completeSettings(), vi.fn());
+
+    expect(manager.isIndependent('solo')).toBe(true);
+    manager.linkChild('parent', 'solo');
+
+    expect(manager.isIndependent('solo')).toBe(false);
+    expect(manager.findParentOf('solo')).toBe('parent');
+    expect(manager.getSettings().manualGroups.parent).toEqual(['a', 'b', 'c', 'solo']);
+  });
+
   it('adds subgroup defaults without deleting legacy group names', () => {
     const save = vi.fn();
     const manager = new GroupManager({

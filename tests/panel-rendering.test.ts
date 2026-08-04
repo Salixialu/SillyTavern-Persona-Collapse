@@ -49,6 +49,11 @@ describe('persona branch panel rendering', () => {
     expect(panelSource).toContain('async function promptMovePersonaDestination');
     expect(panelSource).toContain('const subgroupId = await promptMovePersonaDestination');
     expect(panelSource).toContain('manager.movePersonaToSubgroup(currentParentId, id, subgroupId, children)');
+    expect(panelSource).toContain('renderIndependentDestinationPane');
+    expect(panelSource).toContain('manager.isIndependent(initialParentId)');
+    expect(panelSource).toContain('cp2-manager-target-branch');
+    expect(panelSource).toContain('manager.linkChild(targetId, independentSourceId)');
+    expect(panelSource).toContain('cp2-mgr-create-current-group');
     expect(panelSource).not.toContain('cp2-mgr-subgroup-select');
   });
 

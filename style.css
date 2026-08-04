@@ -721,6 +721,57 @@ body.square-avatars .cp2-picker-avatar {
   padding: 8px;
   background: var(--black20a);
 }
+.cp2-manager-source-card,
+.cp2-manager-target-branch {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--SmartThemeBorderColor);
+  border-radius: 6px;
+  background: var(--black10a);
+  color: var(--SmartThemeBodyColor);
+  text-align: left;
+}
+.cp2-manager-source-card {
+  margin-bottom: 8px;
+}
+.cp2-manager-source-copy,
+.cp2-manager-target-copy {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cp2-manager-source-copy span,
+.cp2-manager-target-copy span {
+  overflow: hidden;
+  color: var(--SmartThemeBodyColor);
+  font-size: 0.78em;
+  opacity: 0.6;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cp2-manager-target-branch {
+  cursor: pointer;
+  margin-bottom: 6px;
+}
+.cp2-manager-target-branch:hover {
+  border-color: var(--SmartThemeQuoteColor);
+  background: rgba(var(--SmartThemeQuoteColorRGB, 52, 152, 219), 0.1);
+}
+.cp2-manager-primary-action {
+  width: 100%;
+  margin-bottom: 8px;
+}
+.cp2-manager-empty-state {
+  padding: 24px 12px;
+  color: var(--SmartThemeBodyColor);
+  text-align: center;
+  opacity: 0.6;
+}
 .cp2-manager-pane-title {
   font-weight: 600;
   text-align: center;
