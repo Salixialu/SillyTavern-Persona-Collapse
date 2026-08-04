@@ -583,11 +583,11 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
     panel.style.display = 'block';
     panel.innerHTML = `
       <div class="cp2-variants-header cp2-standalone-header">
-        <button class="menu_button cp2-toolbar-btn" id="cp2-create-persona" title="新建人设">
-          <i class="fa-solid fa-user-plus"></i><span>新建人设</span>
+        <button class="menu_button cp2-toolbar-btn" id="cp2-create-persona" title="新建人设" aria-label="新建人设">
+          <i class="fa-solid fa-user-plus"></i>
         </button>
-        <button class="menu_button cp2-toolbar-btn" id="cp2-add-branch-btn" title="组建或管理当前角色的分支">
-          <i class="fa-solid fa-users-gear"></i><span>管理分支</span>
+        <button class="menu_button cp2-toolbar-btn" id="cp2-add-branch-btn" title="组建或管理当前角色的分支" aria-label="组建或管理当前角色的分支">
+          <i class="fa-solid fa-users-gear"></i>
         </button>
       </div>
     `;
@@ -636,13 +636,13 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
     <div class="cp2-variants-header" role="toolbar" aria-label="${escapeHtml(tUi('personaCollapse.branchActions', '人设分支操作'))}">
       <div class="cp2-variants-header-actions">
         <button class="menu_button cp2-toolbar-btn" id="cp2-create-persona" title="新建人设" aria-label="新建人设">
-          <i class="fa-solid fa-user-plus"></i><span>新建人设</span>
+          <i class="fa-solid fa-user-plus"></i>
         </button>
         <button class="menu_button cp2-toolbar-btn" id="cp2-create-subgroup" title="${escapeHtml(tUi('personaCollapse.createSubgroup', '新建分组'))}" aria-label="${escapeHtml(tUi('personaCollapse.createSubgroup', '新建分组'))}">
-          <i class="fa-solid fa-folder-plus"></i><span>${escapeHtml(tUi('personaCollapse.createSubgroup', '新建分组'))}</span>
+          <i class="fa-solid fa-folder-plus"></i>
         </button>
         <button class="menu_button cp2-toolbar-btn" id="cp2-add-branch-btn" title="批量管理此分支" aria-label="批量管理此分支">
-          <i class="fa-solid fa-users-gear"></i><span>管理</span>
+          <i class="fa-solid fa-users-gear"></i>
         </button>
       </div>
       <span class="cp2-variants-count" title="${escapeHtml(tUi('personaCollapse.branchCount', '分支内人设数量'))}">${children.length + 1}</span>

@@ -135,7 +135,8 @@
   border-bottom: 1px solid var(--SmartThemeBorderColor);
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
+  gap: 4px;
 }
 .cp2-variants-header-actions {
   display: flex;
@@ -144,11 +145,14 @@
   min-width: 0;
 }
 .cp2-toolbar-btn {
+  width: 30px;
+  height: 30px;
   min-height: 28px;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 3px 8px;
+  justify-content: center;
+  gap: 0;
+  padding: 3px;
   font-size: 0.85em;
   line-height: 1;
 }
@@ -156,7 +160,9 @@
   font-size: 0.9em;
 }
 .cp2-variants-count {
+  order: -1;
   min-width: 1.5em;
+  margin-right: auto;
   padding: 2px 5px;
   color: var(--SmartThemeBodyColor);
   font-size: 0.8em;
@@ -164,13 +170,10 @@
   opacity: 0.55;
 }
 .cp2-standalone-header {
-  justify-content: center;
-  gap: 4px;
+  justify-content: flex-end;
 }
 .cp2-standalone-header .cp2-toolbar-btn {
-  flex: 1 1 0;
-  justify-content: center;
-  width: auto;
+  flex: 0 0 30px;
 }
 .cp2-icon-btn {
   width: 24px;
