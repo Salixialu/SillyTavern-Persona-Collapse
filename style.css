@@ -185,9 +185,8 @@
   font-size: 0.9em;
 }
 .cp2-variants-count {
-  order: -1;
   min-width: 1.5em;
-  margin-right: auto;
+  margin-left: auto;
   padding: 2px 5px;
   color: var(--SmartThemeBodyColor);
   font-size: 0.8em;
