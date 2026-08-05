@@ -14,6 +14,7 @@ const completeSettings = (overrides: Partial<GroupSettings> = {}): GroupSettings
   subgroups: {},
   ungroupedCollapsed: [],
   branchLayouts: {},
+  personaTags: {},
   ...overrides,
 });
 

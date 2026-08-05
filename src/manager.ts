@@ -32,6 +32,7 @@ export interface GroupSettings {
   subgroups: Record<string, PersonaSubgroup[]>;
   ungroupedCollapsed: string[];
   branchLayouts: Record<string, BranchLayoutItem[]>;
+  personaTags?: Record<string, string[]>;
 }
 
 export type BranchLayoutItem = { type: 'persona'; id: string } | { type: 'subgroup'; id: string };
@@ -64,6 +65,7 @@ export class GroupManager {
       subgroups: raw?.subgroups ?? {},
       ungroupedCollapsed: raw?.ungroupedCollapsed ?? [],
       branchLayouts: raw?.branchLayouts ?? {},
+      personaTags: raw?.personaTags ?? {},
     };
 
     // 迁移旧数据：若字段缺失则补齐并保存
@@ -80,7 +82,8 @@ export class GroupManager {
       raw.autoGroupByBinding === undefined ||
       !raw.subgroups ||
       !raw.ungroupedCollapsed ||
-      !raw.branchLayouts
+      !raw.branchLayouts ||
+      !raw.personaTags
     ) {
       needsSave = true;
     }
@@ -594,6 +597,41 @@ export class GroupManager {
     this.saveCallback();
   }
 
+  /** 将 childId 加入当前分支的列表末尾，保留现有分组顺序。 */
+  linkChildAtEnd(parentId: string, childId: string): void {
+    this.linkChild(parentId, childId);
+
+    const children = this.settings.manualGroups[parentId];
+    if (!children) return;
+    const childIndex = children.indexOf(childId);
+    if (childIndex !== -1) children.splice(childIndex, 1);
+    children.push(childId);
+
+    const layout = this.ensureBranchLayout(parentId, children);
+    const layoutIndex = layout.findIndex(item => item.type === 'persona' && item.id === childId);
+    if (layoutIndex !== -1) layout.splice(layoutIndex, 1);
+    layout.push({ type: 'persona', id: childId });
+    this.saveCallback();
+  }
+
+  /** 获取人设标签的副本，避免调用方直接修改设置。 */
+  getPersonaTags(personaId: string): string[] {
+    return [...(this.settings.personaTags?.[personaId] ?? [])];
+  }
+
+  /** 保存人设标签，并去重、去空和限制数量。 */
+  setPersonaTags(personaId: string, tags: string[]): void {
+    const normalized = Array.from(new Set(
+      tags
+        .map(tag => tag.trim().slice(0, 24))
+        .filter(Boolean),
+    )).slice(0, 8);
+    this.settings.personaTags ||= {};
+    if (normalized.length > 0) this.settings.personaTags[personaId] = normalized;
+    else delete this.settings.personaTags[personaId];
+    this.saveCallback();
+  }
+
   /** 将 childId 加入 parentId，并插入到 targetId 后面；targetId 为 parentId 时放到首位 */
   linkChildAfter(parentId: string, childId: string, targetId: string): void {
     if (parentId === childId) return;
@@ -860,6 +898,13 @@ export class GroupManager {
     // 清理孤立 groupNames
     for (const id of Object.keys(this.settings.groupNames)) {
       if (!existing.has(id)) { delete this.settings.groupNames[id]; changed = true; }
+    }
+
+    for (const id of Object.keys(this.settings.personaTags ?? {})) {
+      if (!existing.has(id)) {
+        delete this.settings.personaTags?.[id];
+        changed = true;
+      }
     }
 
     for (const parentId of Object.keys(this.settings.subgroups)) {

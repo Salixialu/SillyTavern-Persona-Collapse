@@ -13,6 +13,17 @@ describe('persona branch panel rendering', () => {
     expect(panelSource).toContain("tUi('personaCollapse.leftListEntry', '左侧列表入口')");
     expect(panelSource).toContain("tUi('personaCollapse.renameSubgroup', '重命名分组')");
     expect(panelSource).toContain("tUi('personaCollapse.deleteSubgroup', '删除分组')");
+    expect(panelSource).toContain('async function createPersonaInBranch');
+    expect(panelSource).toContain('manager.linkChildAtEnd(parentId, avatarId)');
+    expect(panelSource).toContain('async function editPersonaTags');
+    expect(panelSource).toContain('cp2-persona-tags');
+    expect(panelSource).toContain('fa-tags');
+    expect(panelSource).toContain('cp2-surface-persona-slot');
+    expect(panelSource).toContain('surface?: boolean');
+    expect(panelSource).toContain('surface: true');
+    expect(panelSource).not.toContain('cp2-surface-indicator');
+    expect(panelSource).toContain('if (item.id === parentId) continue;');
+    expect(panelSource).toContain('入口固定在顶栏');
     expect(panelSource).toContain("subgroupId ? '' : ' cp2-root-item'");
     expect(panelSource).not.toContain('cp2-subgroup-select');
     expect(panelSource).not.toContain("tUi('personaCollapse.removeFromSubgroup', '移出分组')");
@@ -28,22 +39,63 @@ describe('persona branch panel rendering', () => {
 
   it('renders stable subgroup controls in the manager popup', () => {
     expect(panelSource).toContain('cp2-mgr-create-subgroup');
-    expect(panelSource).toContain('cp2-mgr-move-btn');
-    expect(panelSource).toContain('cp2-mgr-order-btn');
+    expect(panelSource).not.toContain('cp2-mgr-move-btn');
+    expect(panelSource).not.toContain('cp2-mgr-order-btn');
+    expect(panelSource).toContain('cp2-icon-btn cp2-remove-btn');
+    expect(panelSource).toContain('移出分支，回到独立人设');
     expect(panelSource).not.toContain('cp2-mgr-entry-btn');
     expect(panelSource).not.toContain('一键设为主卡');
-    expect(panelSource).toContain('移动到分组');
-    expect(panelSource).toContain('移动到顶层或其他分组');
+    expect(panelSource).toContain('cp2-manager-drag-handle');
+    expect(panelSource).toContain('manager.applyBranchLayoutSnapshot(currentParentId, snapshot, children)');
+    expect(panelSource).toContain('destroyManagerSortables?.();');
+    expect(panelSource).toContain('data-id="${escapeHtml(id)}"');
     expect(panelSource).toContain('cp2-manager-subgroup');
-    expect(panelSource).toContain('async function promptMovePersonaDestination');
-    expect(panelSource).toContain('const subgroupId = await promptMovePersonaDestination');
-    expect(panelSource).toContain('manager.movePersonaToSubgroup(currentParentId, id, subgroupId, children)');
+    expect(panelSource).not.toContain('promptMovePersonaDestination');
+    expect(panelSource).not.toContain('manager.movePersonaToSubgroup(currentParentId, id, subgroupId, children)');
+    expect(panelSource).toContain('renderIndependentDestinationPane');
+    expect(panelSource).toContain('manager.isIndependent(initialParentId)');
+    expect(panelSource).toContain('cp2-manager-target-branch');
+    expect(panelSource).toContain('cp2-manager-target-arrow');
+    expect(panelSource).toContain('cp2-manager-target-arrow"></i>');
+    expect(panelSource).toContain('manager.linkChild(targetId, independentSourceId)');
+    expect(panelSource).toContain('cp2-mgr-create-current-group');
+    expect(panelSource).toContain('目标分支');
+    expect(panelSource).toContain("if (leftTitle) leftTitle.textContent = '当前人设';");
+    expect(panelSource).toContain("if (rightTitle) rightTitle.innerHTML = '目标分支 (<span id=\"cp2-mgr-count\">0</span>)';");
+    expect(panelSource).toContain("const managerHint = independentSourceId");
+    expect(panelSource).toContain('targetPane.querySelectorAll<HTMLButtonElement>');
+    expect(panelSource).toContain("let mode: 'add-to-current' | 'join-another-branch' | 'manage-current-branch'");
+    expect(panelSource).toContain('const sourceParentId = manager.findParentOf(id);');
+    expect(panelSource).toContain('来自分支：');
+    expect(panelSource).toContain('转移到');
+    expect(panelSource).toContain('cp2-mgr-left-title');
+    expect(panelSource).toContain('搜索目标分支...');
     expect(panelSource).not.toContain('cp2-mgr-subgroup-select');
   });
 
   it('keeps both manager lists independently scrollable', () => {
     expect(panelSource).toContain('cp2-manager-list');
     expect(panelSource).toContain('cp2-manager-columns');
+  });
+
+  it('keeps join mode separate from current branch management', () => {
+    expect(panelSource).toContain("mode = 'manage-current-branch';");
+    expect(panelSource).toContain("if (mode === 'join-another-branch' && independentSourceId)");
+    expect(panelSource).toContain("if (leftTitle) leftTitle.innerHTML = '可加入人设 (<span id=\"cp2-mgr-count\">0</span>)';");
+    expect(panelSource).toContain("if (rightTitle) rightTitle.textContent = isAddingToCurrent ? '当前目标分支' : '当前分支';");
+    expect(panelSource).toContain('manager.initGroup(currentParentId);');
+    expect(panelSource).toContain('manager.linkChild(currentParentId, id);');
+    expect(panelSource).toContain('data-manager-mode="add-to-current"');
+    expect(panelSource).toContain('data-manager-mode="join-another-branch"');
+  });
+
+  it('supports replacing the branch entry by dragging it onto a member', () => {
+    expect(panelSource).toContain("item.draggable = true;");
+    expect(panelSource).toContain('拖动到分支成员以替换入口');
+    expect(panelSource).toContain('cp2-entry-replace-target');
+    expect(panelSource).toContain('const replaceEntryWith = (targetId: string): boolean =>');
+    expect(panelSource).toContain('manager.applyBranchLayoutSnapshot(parentId, {');
+    expect(panelSource).toContain('memberIds.filter(memberId => memberId !== targetId)');
   });
 
   it('deletes a subgroup only after its confirmation popup resolves', () => {
@@ -57,6 +109,13 @@ describe('persona branch panel rendering', () => {
     expect(panelSource).toContain('!variantsPanelDirty && currentId === lastPanelPersonaId');
     expect(panelSource).toContain('variantsPanelDirty = true;');
     expect(panelSource).toContain('variantsPanelDirty = false;');
+  });
+
+  it('keeps the detail toolbar compact when no branch exists', () => {
+    expect(panelSource).toContain("const hasBranchContent = children.length > 0 || layout.root.some(item => item.type === 'subgroup');");
+    expect(panelSource).toContain("cp2-variants-header-no-branches");
+    expect(panelSource).toContain("if (children.length > 0) {");
+    expect(panelSource).toContain("children.length > 0 ? `<span class=\"cp2-variants-count\"");
   });
 
   it('uses SortableJS as the only drag placement engine', () => {
@@ -93,7 +152,7 @@ describe('persona branch panel rendering', () => {
     expect(panelSource).toContain('clearInterval(panelInterval);');
     expect(panelSource).toContain('bodyObserver.disconnect();');
     expect(panelSource).toContain('pendingSubgroupFocusId');
-    expect(panelSource).toContain('canMoveUp');
-    expect(panelSource).toContain('disabled');
+    expect(panelSource).not.toContain('canMoveUp');
+    expect(panelSource).not.toContain('cp2-mgr-order-btn');
   });
 });

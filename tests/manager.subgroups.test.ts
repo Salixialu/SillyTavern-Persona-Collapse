@@ -13,11 +13,23 @@ const completeSettings = (overrides: Partial<GroupSettings> = {}): GroupSettings
   subgroups: {},
   ungroupedCollapsed: [],
   branchLayouts: {},
+  personaTags: {},
   ...overrides,
 });
 
 describe('GroupManager subgroup migration', () => {
   beforeEach(() => vi.useFakeTimers());
+
+  it('moves an independent persona into an existing branch', () => {
+    const manager = new GroupManager(completeSettings(), vi.fn());
+
+    expect(manager.isIndependent('solo')).toBe(true);
+    manager.linkChild('parent', 'solo');
+
+    expect(manager.isIndependent('solo')).toBe(false);
+    expect(manager.findParentOf('solo')).toBe('parent');
+    expect(manager.getSettings().manualGroups.parent).toEqual(['a', 'b', 'c', 'solo']);
+  });
 
   it('adds subgroup defaults without deleting legacy group names', () => {
     const save = vi.fn();
@@ -55,6 +67,33 @@ describe('GroupManager subgroup migration', () => {
 });
 
 describe('GroupManager subgroup operations', () => {
+  it('appends a new branch member after existing groups and stores tags', () => {
+    const manager = new GroupManager(completeSettings({
+      subgroups: {
+        parent: [{ id: 'warm', name: '温柔线', personaIds: ['b'], collapsed: false }],
+      },
+      branchLayouts: {
+        parent: [
+          { type: 'persona', id: 'parent' },
+          { type: 'persona', id: 'a' },
+          { type: 'subgroup', id: 'warm' },
+        ],
+      },
+    }), vi.fn());
+
+    manager.linkChildAtEnd('parent', 'c');
+    manager.setPersonaTags('c', ['  日常  ', '日常', '短发']);
+
+    expect(manager.getSettings().manualGroups.parent).toEqual(['a', 'b', 'c']);
+    expect(manager.getSettings().branchLayouts.parent).toEqual([
+      { type: 'persona', id: 'parent' },
+      { type: 'persona', id: 'a' },
+      { type: 'subgroup', id: 'warm' },
+      { type: 'persona', id: 'c' },
+    ]);
+    expect(manager.getPersonaTags('c')).toEqual(['日常', '短发']);
+  });
+
   it('creates, renames, folds and deletes a subgroup without changing branch links', () => {
     const save = vi.fn();
     const manager = new GroupManager(completeSettings({
