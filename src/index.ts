@@ -1150,13 +1150,21 @@ function openGroupManager(initialParentId: string): void {
         <button id="cp2-mgr-create-subgroup" class="menu_button"><i class="fa-solid fa-folder-plus"></i> 新建分组</button>
         <button id="cp2-mgr-disband" class="menu_button cp2-manager-disband"><i class="fa-solid fa-link-slash"></i> 解散分组</button>
       </div>
+      <div class="cp2-manager-entry-drop-zone" data-entry-persona-id="${escapeHtml(currentParentId)}">
+        <img class="cp2-picker-avatar" src="${getThumbUrl(currentParentId)}" />
+        <span class="cp2-manager-entry-copy">
+          <strong>${escapeHtml(currentParentName)}</strong>
+          <span>当前入口 · 拖入其它人设可替换</span>
+        </span>
+        <i class="fa-solid fa-eye cp2-manager-entry-icon"></i>
+      </div>
       <div class="cp2-manager-branch">
     `;
 
     for (const item of layout.root) {
       if (item.type === 'persona') {
+        if (item.id === currentParentId) continue;
         rightHtml += renderManagerPersonaItem(item.id, {
-          isEntry: item.id === currentParentId,
           subgroupId: null,
         });
         continue;
@@ -1230,11 +1238,27 @@ function openGroupManager(initialParentId: string): void {
     });
 
     const managerBranch = rightPane.querySelector<HTMLElement>('.cp2-manager-branch');
+    const entryDropZone = rightPane.querySelector<HTMLElement>('.cp2-manager-entry-drop-zone');
     if (managerBranch) {
       destroyManagerSortables = mountBranchSortables({
         root: managerBranch,
-        onCommit: snapshot => {
-          const newEntryId = manager.applyBranchLayoutSnapshot(currentParentId, snapshot, children);
+        entryDropZone: entryDropZone ?? undefined,
+        fixedEntryInRoot: false,
+        onCommit: (snapshot, replacementPersonaId) => {
+          let nextRoot = [
+            { type: 'persona' as const, id: currentParentId },
+            ...snapshot.root,
+          ];
+          if (replacementPersonaId && replacementPersonaId !== currentParentId) {
+            nextRoot = [
+              { type: 'persona' as const, id: replacementPersonaId },
+              ...nextRoot.filter(item => !(item.type === 'persona' && item.id === replacementPersonaId)),
+            ];
+          }
+          const newEntryId = manager.applyBranchLayoutSnapshot(currentParentId, {
+            ...snapshot,
+            root: nextRoot,
+          }, children);
           if (!newEntryId) return false;
           currentParentId = newEntryId;
           queueMicrotask(() => {

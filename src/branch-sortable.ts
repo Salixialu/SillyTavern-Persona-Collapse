@@ -4,7 +4,9 @@ import type { BranchLayoutItem, BranchLayoutSnapshot } from './manager';
 
 export interface BranchSortableOptions {
   root: HTMLElement;
-  onCommit: (snapshot: BranchLayoutSnapshot) => boolean;
+  entryDropZone?: HTMLElement;
+  fixedEntryInRoot?: boolean;
+  onCommit: (snapshot: BranchLayoutSnapshot, replacementPersonaId?: string) => boolean;
   onReject: () => void;
   onExpandSubgroup: (subgroupId: string, section: HTMLElement) => void;
   onDragStateChange: (active: boolean) => void;
@@ -43,7 +45,8 @@ function getRootSubgroupItems(root: HTMLElement): HTMLElement[] {
   return Array.from(root.querySelectorAll<HTMLElement>(SUBGROUP_ITEMS_SELECTOR));
 }
 
-function canMoveEntryIntoSubgroup(root: HTMLElement, event: Sortable.MoveEvent): boolean {
+function canMoveEntryIntoSubgroup(root: HTMLElement, event: Sortable.MoveEvent, fixedEntryInRoot: boolean): boolean {
+  if (!fixedEntryInRoot) return true;
   if (event.to === root || !(event.dragged instanceof HTMLElement)) return true;
   if (event.dragged.dataset.layoutType !== 'persona') return false;
   const entry = getDirectChildren(root, ROOT_ITEM_SELECTOR)[0];
@@ -53,7 +56,8 @@ function canMoveEntryIntoSubgroup(root: HTMLElement, event: Sortable.MoveEvent):
   );
 }
 
-function canMoveRootItemToStart(root: HTMLElement, event: Sortable.MoveEvent): boolean {
+function canMoveRootItemToStart(root: HTMLElement, event: Sortable.MoveEvent, fixedEntryInRoot: boolean): boolean {
+  if (!fixedEntryInRoot) return true;
   if (event.to !== root || !(event.dragged instanceof HTMLElement)) return true;
   if (event.dragged.dataset.layoutType !== 'subgroup' || event.willInsertAfter) return true;
   const firstItem = getDirectChildren(root, ROOT_ITEM_SELECTOR)[0];
@@ -131,7 +135,9 @@ export function mountBranchSortables(options: BranchSortableOptions): () => void
   };
 
   const updateDropTarget = (event: Sortable.MoveEvent): void => {
-    const nextSection = event.to.closest<HTMLElement>(SUBGROUP_SELECTOR);
+    const nextSection = event.to === options.entryDropZone
+      ? event.to
+      : event.to.closest<HTMLElement>(SUBGROUP_SELECTOR);
     if (nextSection === activeDropSection) return;
     activeDropSection?.classList.remove(DROP_TARGET_CLASS);
     activeDropSection = nextSection;
@@ -174,8 +180,10 @@ export function mountBranchSortables(options: BranchSortableOptions): () => void
     chosenClass: 'cp2-sort-chosen',
     dragClass: 'cp2-sort-drag',
     onMove: event => {
-      const allowed = canMoveEntryIntoSubgroup(options.root, event)
-        && canMoveRootItemToStart(options.root, event);
+      const isEntryDrop = options.entryDropZone && event.to === options.entryDropZone;
+      const allowed = Boolean(isEntryDrop)
+        || (canMoveEntryIntoSubgroup(options.root, event, options.fixedEntryInRoot ?? true)
+          && canMoveRootItemToStart(options.root, event, options.fixedEntryInRoot ?? true));
       if (allowed) {
         const isCrossContainer = event.to !== draggedElement?.parentElement;
         updateDropTarget(event);
@@ -230,7 +238,14 @@ export function mountBranchSortables(options: BranchSortableOptions): () => void
           }
         }
       }
-      const accepted = options.onCommit(readBranchLayoutSnapshot(options.root));
+      const replacementPersonaId = options.entryDropZone?.contains(draggedElement)
+        ? draggedElement?.dataset.personaId
+        : undefined;
+      if (replacementPersonaId && draggedElement) {
+        options.entryDropZone?.removeChild(draggedElement);
+        options.root.insertBefore(draggedElement, options.root.firstElementChild);
+      }
+      const accepted = options.onCommit(readBranchLayoutSnapshot(options.root), replacementPersonaId);
       stopDrag();
       if (!accepted) queueMicrotask(options.onReject);
     },
@@ -240,6 +255,14 @@ export function mountBranchSortables(options: BranchSortableOptions): () => void
   instances.push(Sortable.create(options.root, sharedOptions));
   for (const items of getRootSubgroupItems(options.root)) {
     instances.push(Sortable.create(items, { ...sharedOptions, draggable: PERSONA_ITEM_SELECTOR }));
+  }
+  if (options.entryDropZone) {
+    instances.push(Sortable.create(options.entryDropZone, {
+      ...sharedOptions,
+      group: { name: 'cp2-branch-layout', pull: false, put: true },
+      draggable: PERSONA_ITEM_SELECTOR,
+      sort: false,
+    }));
   }
 
   for (const header of Array.from(options.root.querySelectorAll<HTMLElement>(SUBGROUP_HEADER_SELECTOR))) {

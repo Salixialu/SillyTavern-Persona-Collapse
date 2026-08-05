@@ -46,7 +46,11 @@ describe('persona branch panel rendering', () => {
     expect(panelSource).not.toContain('cp2-mgr-entry-btn');
     expect(panelSource).not.toContain('一键设为主卡');
     expect(panelSource).toContain('cp2-manager-drag-handle');
-    expect(panelSource).toContain('manager.applyBranchLayoutSnapshot(currentParentId, snapshot, children)');
+    expect(panelSource).toContain('manager.applyBranchLayoutSnapshot(currentParentId, {');
+    expect(panelSource).toContain('cp2-manager-entry-drop-zone');
+    expect(panelSource).toContain('entryDropZone: entryDropZone');
+    expect(panelSource).toContain('fixedEntryInRoot: false');
+    expect(panelSource).toContain('replacementPersonaId');
     expect(panelSource).toContain('destroyManagerSortables?.();');
     expect(panelSource).toContain('data-id="${escapeHtml(id)}"');
     expect(panelSource).toContain('cp2-manager-subgroup');

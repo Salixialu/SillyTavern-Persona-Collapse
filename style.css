@@ -796,6 +796,41 @@ body.square-avatars .cp2-picker-avatar {
   margin: 0;
   color: var(--warning-color, #d35f5f);
 }
+.cp2-manager-entry-drop-zone {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  margin: 0 6px 8px;
+  padding: 5px 8px;
+  border: 1px solid var(--SmartThemeBorderColor);
+  border-radius: 6px;
+  background: var(--black10a);
+  color: var(--SmartThemeBodyColor);
+  transition: border-color 0.15s, background 0.15s;
+}
+.cp2-manager-entry-drop-zone.cp2-drop-target {
+  border-color: var(--SmartThemeQuoteColor);
+  background: rgba(var(--SmartThemeQuoteColorRGB, 52, 152, 219), 0.12);
+}
+.cp2-manager-entry-copy {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cp2-manager-entry-copy span {
+  overflow: hidden;
+  font-size: 0.78em;
+  opacity: 0.6;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cp2-manager-entry-icon {
+  flex: 0 0 auto;
+  opacity: 0.55;
+}
 .cp2-manager-branch {
   display: flex;
   flex-direction: column;
