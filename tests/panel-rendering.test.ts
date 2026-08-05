@@ -89,6 +89,15 @@ describe('persona branch panel rendering', () => {
     expect(panelSource).toContain('data-manager-mode="join-another-branch"');
   });
 
+  it('supports replacing the branch entry by dragging it onto a member', () => {
+    expect(panelSource).toContain("item.draggable = true;");
+    expect(panelSource).toContain('拖动到分支成员以替换入口');
+    expect(panelSource).toContain('cp2-entry-replace-target');
+    expect(panelSource).toContain('const replaceEntryWith = (targetId: string): boolean =>');
+    expect(panelSource).toContain('manager.applyBranchLayoutSnapshot(parentId, {');
+    expect(panelSource).toContain('memberIds.filter(memberId => memberId !== targetId)');
+  });
+
   it('deletes a subgroup only after its confirmation popup resolves', () => {
     expect(panelSource).toContain('async function confirmSubgroupDeletion');
     expect(panelSource).toContain('const confirmed = await confirmSubgroupDeletion(subgroupName);');

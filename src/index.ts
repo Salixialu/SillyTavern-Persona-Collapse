@@ -614,6 +614,7 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
 
   // 渲染成员列表
   const list = panel.querySelector<HTMLElement>('.cp2-variants-list')!;
+  let entryDragActive = false;
   const createPersonaItem = (
     memberId: string,
     options: {
@@ -629,6 +630,10 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
     item.className = `cp2-variant-item cp2-persona-sort-item${subgroupId ? '' : ' cp2-root-item'}${surface ? ' cp2-surface-persona' : ''}${isCurrentUser ? ' active' : ''}`;
     item.dataset.personaId = memberId;
     item.dataset.layoutType = 'persona';
+    if (surface) {
+      item.draggable = true;
+      item.title = '拖动到分支成员以替换入口';
+    }
     if (subgroupId) item.dataset.subgroupId = subgroupId;
 
     const avatar = document.createElement('img');
@@ -745,6 +750,7 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
     item.appendChild(textDiv);
     item.appendChild(actions);
     item.onclick = () => {
+      if (entryDragActive) return;
       if (!isCurrentUser) {
         switchToPersona(memberId).then(() =>
           // 直接传入 memberId，不依赖 DOM .selected 查找
@@ -757,7 +763,19 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
 
   const surfaceSlot = panel.querySelector<HTMLElement>('.cp2-surface-persona-slot');
   if (children.length > 0) {
-    surfaceSlot?.appendChild(createPersonaItem(parentId, { isEntry: true, surface: true }));
+    const surfaceItem = createPersonaItem(parentId, { isEntry: true, surface: true });
+    surfaceItem.addEventListener('dragstart', event => {
+      entryDragActive = true;
+      surfaceItem.classList.add('cp2-entry-drag-source');
+      event.dataTransfer?.setData('text/plain', parentId);
+      if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+    });
+    surfaceItem.addEventListener('dragend', () => {
+      entryDragActive = false;
+      surfaceItem.classList.remove('cp2-entry-drag-source');
+      list.querySelectorAll('.cp2-entry-replace-target').forEach(el => el.classList.remove('cp2-entry-replace-target'));
+    });
+    surfaceSlot?.appendChild(surfaceItem);
   }
 
   const createSubgroupSection = (groupId: string): HTMLElement => {
@@ -887,6 +905,62 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
       list.appendChild(createSubgroupSection(item.id));
     }
   }
+
+  const replaceEntryWith = (targetId: string): boolean => {
+    if (targetId === parentId || !children.includes(targetId)) return false;
+    const nextSubgroupMembers = Object.fromEntries(
+      Object.entries(layout.subgroupMembers).map(([groupId, memberIds]) => [
+        groupId,
+        memberIds.filter(memberId => memberId !== targetId),
+      ]),
+    );
+    const nextRoot = [
+      { type: 'persona' as const, id: targetId },
+      ...layout.root.filter(item => !(item.type === 'persona' && (item.id === targetId || item.id === parentId))),
+      { type: 'persona' as const, id: parentId },
+    ];
+    const newEntryId = manager.applyBranchLayoutSnapshot(parentId, {
+      root: nextRoot,
+      subgroupMembers: nextSubgroupMembers,
+    }, children);
+    if (!newEntryId) return false;
+    toastr.success(`已将【${getPersonaName(targetId)}】替换为分支入口`);
+    queueMicrotask(() => {
+      renderAvatarBlock();
+      renderVariantsPanel(true, newEntryId);
+    });
+    return true;
+  };
+
+  list.addEventListener('dragover', event => {
+    if (!entryDragActive) return;
+    const target = (event.target as Element).closest<HTMLElement>('.cp2-persona-sort-item[data-layout-type="persona"]');
+    const targetId = target?.dataset.personaId;
+    if (!targetId || targetId === parentId || !children.includes(targetId)) return;
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+    list.querySelectorAll('.cp2-entry-replace-target').forEach(el => {
+      if (el !== target) el.classList.remove('cp2-entry-replace-target');
+    });
+    target.classList.add('cp2-entry-replace-target');
+  });
+  list.addEventListener('dragleave', event => {
+    const target = (event.target as Element).closest<HTMLElement>('.cp2-entry-replace-target');
+    if (target && !target.contains(event.relatedTarget as Node | null)) {
+      target.classList.remove('cp2-entry-replace-target');
+    }
+  });
+  list.addEventListener('drop', event => {
+    if (!entryDragActive) return;
+    const target = (event.target as Element).closest<HTMLElement>('.cp2-persona-sort-item[data-layout-type="persona"]');
+    const targetId = target?.dataset.personaId;
+    if (!targetId || targetId === parentId || !children.includes(targetId)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    replaceEntryWith(targetId);
+    entryDragActive = false;
+    list.querySelectorAll('.cp2-entry-replace-target').forEach(el => el.classList.remove('cp2-entry-replace-target'));
+  });
 
   if (pendingSubgroupFocusId) {
     const focusId = pendingSubgroupFocusId;

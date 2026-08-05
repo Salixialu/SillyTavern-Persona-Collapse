@@ -177,6 +177,14 @@
   border-color: transparent;
   background: rgba(var(--SmartThemeQuoteColorRGB, 52, 152, 219), 0.08);
 }
+.cp2-surface-persona {
+  cursor: grab;
+}
+.cp2-surface-persona:active,
+.cp2-entry-drag-source {
+  cursor: grabbing;
+  opacity: 0.72;
+}
 .cp2-variants-header-actions {
   display: flex;
   align-items: center;
@@ -481,6 +489,11 @@ body.square-avatars .cp2-variant-avatar {
 .cp2-persona-sort-item.cp2-sort-insert-after::after { bottom: 0; }
 .cp2-sort-chosen {
   outline: 1px solid var(--SmartThemeQuoteColor);
+}
+.cp2-entry-replace-target {
+  border-color: var(--SmartThemeQuoteColor) !important;
+  background: color-mix(in srgb, var(--SmartThemeQuoteColor) 13%, transparent) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--SmartThemeQuoteColor) 28%, transparent);
 }
 .cp2-manual-drop-indicator {
   position: fixed;
