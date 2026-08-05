@@ -58,6 +58,10 @@ describe('persona branch panel rendering', () => {
     expect(panelSource).toContain('manager.linkChild(targetId, independentSourceId)');
     expect(panelSource).toContain('cp2-mgr-create-current-group');
     expect(panelSource).toContain('选择目标分支');
+    expect(panelSource).toContain("if (leftTitle) leftTitle.textContent = '选择目标分支';");
+    expect(panelSource).toContain("if (rightTitle) rightTitle.textContent = '当前独立人设';");
+    expect(panelSource).toContain("const managerHint = independentSourceId");
+    expect(panelSource).toContain('targetPane.querySelectorAll<HTMLButtonElement>');
     expect(panelSource).toContain('cp2-mgr-left-title');
     expect(panelSource).toContain('搜索目标分支...');
     expect(panelSource).not.toContain('cp2-mgr-subgroup-select');

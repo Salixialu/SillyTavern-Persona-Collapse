@@ -989,8 +989,8 @@ function openGroupManager(initialParentId: string): void {
   }
 
   function renderIndependentDestinationPane(
-    leftPane: HTMLElement,
-    rightPane: HTMLElement,
+    targetPane: HTMLElement,
+    sourcePane: HTMLElement,
     countEl: HTMLElement | null,
   ): void {
     if (!independentSourceId) return;
@@ -1017,7 +1017,7 @@ function openGroupManager(initialParentId: string): void {
       return true;
     });
 
-    leftPane.innerHTML = `
+    sourcePane.innerHTML = `
       <div class="cp2-manager-source-card">
         <img class="cp2-picker-avatar" src="${getThumbUrl(independentSourceId)}" />
         <div class="cp2-manager-source-copy">
@@ -1029,7 +1029,7 @@ function openGroupManager(initialParentId: string): void {
         <i class="fa-solid fa-folder-plus"></i> 以此人设建立新分支
       </button>
     `;
-    rightPane.innerHTML = branchIds.length > 0
+    targetPane.innerHTML = branchIds.length > 0
       ? branchIds.map(id => {
         const count = manager.getEffectiveGroups()[id]?.length ?? 0;
         return `
@@ -1047,7 +1047,7 @@ function openGroupManager(initialParentId: string): void {
 
     if (countEl) countEl.textContent = String(branchIds.length);
 
-    leftPane.querySelector('#cp2-mgr-create-current-group')?.addEventListener('click', e => {
+    sourcePane.querySelector('#cp2-mgr-create-current-group')?.addEventListener('click', e => {
       e.stopPropagation();
       manager.initGroup(independentSourceId);
       currentParentId = independentSourceId;
@@ -1055,7 +1055,7 @@ function openGroupManager(initialParentId: string): void {
       renderPanes();
     });
 
-    rightPane.querySelectorAll<HTMLButtonElement>('.cp2-manager-target-branch').forEach(button => {
+    targetPane.querySelectorAll<HTMLButtonElement>('.cp2-manager-target-branch').forEach(button => {
       button.addEventListener('click', e => {
         e.stopPropagation();
         const targetId = button.dataset.id;
@@ -1083,8 +1083,8 @@ function openGroupManager(initialParentId: string): void {
     if (independentSourceId && !selectedDestinationId) {
       destroyManagerSortables?.();
       destroyManagerSortables = null;
-      if (leftTitle) leftTitle.textContent = '当前独立人设';
-      if (rightTitle) rightTitle.textContent = '选择目标分支';
+      if (leftTitle) leftTitle.textContent = '选择目标分支';
+      if (rightTitle) rightTitle.textContent = '当前独立人设';
       if (searchInput) searchInput.placeholder = '搜索目标分支...';
       renderIndependentDestinationPane(leftPane, rightPane, countEl);
       return;
@@ -1314,10 +1314,13 @@ function openGroupManager(initialParentId: string): void {
     });
   }
 
+  const managerHint = independentSourceId
+    ? '批量管理分组。左侧为可选目标分支，点击即可将当前独立人设移入；也可以在右侧以此人设建立新分支。'
+    : '批量管理分组。你可以将左侧的独立人设点击加入右侧，也可以在右侧调整顺序、移入分组或移出分支。';
   const popupContent = `
     <div class="cp2-manager-dialog">
     <div class="cp2-manager-hint">
-      <i class="fa-solid fa-users"></i> 批量管理分组。你可以将左侧的独立人设点击加入右侧，也可以在右侧调整顺序、移入分组或移出分支。
+      <i class="fa-solid fa-users"></i> ${escapeHtml(managerHint)}
     </div>
     <div class="cp2-manager-searchbar">
       <input type="text" id="cp2-mgr-search" class="text_pole" placeholder="搜索独立人设...">
