@@ -941,12 +941,12 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
 /** 弹出批量管理面板：双栏 UI 管理分组及主卡 */
 function openGroupManager(initialParentId: string): void {
   let currentParentId = initialParentId;
+  let mode: 'join' | 'manage' = manager.isIndependent(initialParentId) ? 'join' : 'manage';
   let searchQuery = '';
   let filterMode: 'all' | 'samename' | 'samechar' = 'all';
   let pendingManagerSubgroupFocusId: string | null = null;
   let destroyManagerSortables: (() => void) | null = null;
   const independentSourceId = manager.isIndependent(initialParentId) ? initialParentId : null;
-  let selectedDestinationId: string | null = null;
 
   const allIds = Array.from(document.querySelectorAll('#user_avatar_block .avatar-container'))
     .map(getAvatarId).filter(Boolean) as string[];
@@ -989,8 +989,8 @@ function openGroupManager(initialParentId: string): void {
   }
 
   function renderIndependentDestinationPane(
-    targetPane: HTMLElement,
     sourcePane: HTMLElement,
+    targetPane: HTMLElement,
     countEl: HTMLElement | null,
   ): void {
     if (!independentSourceId) return;
@@ -1050,8 +1050,8 @@ function openGroupManager(initialParentId: string): void {
     sourcePane.querySelector('#cp2-mgr-create-current-group')?.addEventListener('click', e => {
       e.stopPropagation();
       manager.initGroup(independentSourceId);
+      mode = 'manage';
       currentParentId = independentSourceId;
-      selectedDestinationId = independentSourceId;
       renderPanes();
     });
 
@@ -1061,8 +1061,8 @@ function openGroupManager(initialParentId: string): void {
         const targetId = button.dataset.id;
         if (!targetId) return;
         manager.linkChild(targetId, independentSourceId);
+        mode = 'manage';
         currentParentId = targetId;
-        selectedDestinationId = targetId;
         toastr.success(`已将【${sourceName}】移入【${getPersonaName(targetId)}】分支`);
         renderAvatarBlock();
         renderVariantsPanel(true, targetId);
@@ -1074,37 +1074,34 @@ function openGroupManager(initialParentId: string): void {
   function renderPanes() {
     const leftPane = document.getElementById('cp2-mgr-left');
     const rightPane = document.getElementById('cp2-mgr-right');
-    const countEl = document.getElementById('cp2-mgr-count');
     const leftTitle = document.getElementById('cp2-mgr-left-title');
     const rightTitle = document.getElementById('cp2-mgr-right-title');
+    const hintText = document.getElementById('cp2-mgr-hint-text');
     const searchInput = document.getElementById('cp2-mgr-search') as HTMLInputElement | null;
     if (!leftPane || !rightPane) return;
 
-    if (independentSourceId && !selectedDestinationId) {
+    if (mode === 'join' && independentSourceId) {
       destroyManagerSortables?.();
       destroyManagerSortables = null;
-      if (leftTitle) leftTitle.textContent = '选择目标分支';
-      if (rightTitle) rightTitle.textContent = '当前独立人设';
+      if (leftTitle) leftTitle.textContent = '当前人设';
+      if (rightTitle) rightTitle.innerHTML = '目标分支 (<span id="cp2-mgr-count">0</span>)';
+      if (hintText) hintText.textContent = '将当前人设加入某个目标分支，或以当前人设建立新分支。';
       if (searchInput) searchInput.placeholder = '搜索目标分支...';
-      renderIndependentDestinationPane(leftPane, rightPane, countEl);
+      renderIndependentDestinationPane(leftPane, rightPane, document.getElementById('cp2-mgr-count'));
       return;
     }
 
-    if (leftTitle) leftTitle.innerHTML = '可选独立人设 (<span id="cp2-mgr-count">0</span>)';
-    if (rightTitle) rightTitle.textContent = '当前分支列表';
-    if (searchInput) searchInput.placeholder = '搜索独立人设...';
+    if (leftTitle) leftTitle.innerHTML = '可加入人设 (<span id="cp2-mgr-count">0</span>)';
+    if (rightTitle) rightTitle.textContent = '当前分支';
+    if (hintText) hintText.textContent = '将左侧人设加入右侧当前分支，也可以在右侧排序、分组或移出分支。';
+    if (searchInput) searchInput.placeholder = '搜索可加入人设...';
 
     const effectiveGroups = manager.getEffectiveGroups();
     const children = effectiveGroups[currentParentId] || [];
     const layout = manager.getBranchLayout(currentParentId, children);
     const subgroups = manager.getSettings().subgroups[currentParentId] || [];
     const subgroupById = new Map(subgroups.map(group => [group.id, group]));
-    const groupedIds = new Set<string>();
-    for (const [pid, cids] of Object.entries(effectiveGroups)) {
-      groupedIds.add(pid);
-      for (const c of cids) groupedIds.add(c);
-    }
-    let availableIds = allIds.filter(id => id !== currentParentId && !groupedIds.has(id));
+    let availableIds = allIds.filter(id => id !== currentParentId && !children.includes(id));
 
     const currentParentName = getPersonaName(currentParentId);
     const parentBaseName = currentParentName.match(/^(.+?)\s*[-_]\s*.+$/)?.[1].trim() || currentParentName.trim();
@@ -1132,14 +1129,18 @@ function openGroupManager(initialParentId: string): void {
     for (const id of availableIds) {
       const name = getPersonaName(id);
       const thumbUrl = getThumbUrl(id);
+      const sourceParentId = manager.findParentOf(id);
+      const sourceLabel = sourceParentId
+        ? `来自分支：${getPersonaName(sourceParentId)}`
+        : '独立人设';
       const tags = manager.getPersonaTags(id);
       const tagHtml = tags.length > 0
         ? `<span class="cp2-persona-tags">${tags.map(tag => `<span class="cp2-persona-tag" title="${escapeHtml(tag)}">${escapeHtml(tag)}</span>`).join('')}</span>`
         : '';
       leftHtml += `
-        <div class="cp2-picker-item" data-id="${escapeHtml(id)}" title="点击移入分支">
+        <div class="cp2-picker-item cp2-manager-source-item" data-id="${escapeHtml(id)}" title="点击加入当前分支">
           <img class="cp2-picker-avatar" src="${thumbUrl}" />
-          <span class="cp2-picker-name">${escapeHtml(name)}${tagHtml}</span>
+          <span class="cp2-picker-name"><strong>${escapeHtml(name)}</strong><small>${escapeHtml(sourceLabel)}</small>${tagHtml}</span>
           <i class="fa-solid fa-arrow-right" style="opacity: 0.5;"></i>
         </div>
       `;
@@ -1213,8 +1214,16 @@ function openGroupManager(initialParentId: string): void {
       el.addEventListener('click', () => {
         const id = (el as HTMLElement).dataset.id;
         if (id) {
+          const sourceParentId = manager.findParentOf(id);
+          if (sourceParentId && sourceParentId !== currentParentId) {
+            const sourceName = getPersonaName(sourceParentId);
+            const targetName = getPersonaName(currentParentId);
+            const confirmed = confirm(`将【${getPersonaName(id)}】从【${sourceName}】转移到【${targetName}】分支？\n\n如果它是原分支入口，原分支及其成员会被拆开。`);
+            if (!confirmed) return;
+          }
           manager.initGroup(currentParentId);
           manager.linkChild(currentParentId, id);
+          toastr.success(`已将【${getPersonaName(id)}】加入【${getPersonaName(currentParentId)}】分支`);
           renderPanes();
         }
       });
@@ -1315,29 +1324,31 @@ function openGroupManager(initialParentId: string): void {
   }
 
   const managerHint = independentSourceId
-    ? '批量管理分组。左侧为可选目标分支，点击即可将当前独立人设移入；也可以在右侧以此人设建立新分支。'
-    : '批量管理分组。你可以将左侧的独立人设点击加入右侧，也可以在右侧调整顺序、移入分组或移出分支。';
+    ? '将当前人设加入某个目标分支，或以当前人设建立新分支。'
+    : '将左侧人设加入右侧当前分支，也可以在右侧排序、分组或移出分支。';
+  const initialLeftTitle = independentSourceId ? '当前人设' : '可加入人设';
+  const initialRightTitle = independentSourceId ? '目标分支' : '当前分支';
   const popupContent = `
     <div class="cp2-manager-dialog">
     <div class="cp2-manager-hint">
-      <i class="fa-solid fa-users"></i> ${escapeHtml(managerHint)}
+      <i class="fa-solid fa-users"></i> <span id="cp2-mgr-hint-text">${escapeHtml(managerHint)}</span>
     </div>
     <div class="cp2-manager-searchbar">
-      <input type="text" id="cp2-mgr-search" class="text_pole" placeholder="搜索独立人设...">
+      <input type="text" id="cp2-mgr-search" class="text_pole" placeholder="搜索可加入人设...">
       <button class="menu_button cp2-filter-btn" data-mode="all">全部</button>
       <button class="menu_button cp2-filter-btn" data-mode="samename">同名</button>
       <button class="menu_button cp2-filter-btn" data-mode="samechar">同绑定</button>
     </div>
     <div class="cp2-manager-columns">
       <div class="cp2-manager-pane">
-        <div id="cp2-mgr-left-title" class="cp2-manager-pane-title">可选独立人设 (<span id="cp2-mgr-count">0</span>)</div>
+        <div id="cp2-mgr-left-title" class="cp2-manager-pane-title">${initialLeftTitle}</div>
         <div id="cp2-mgr-left" class="cp2-picker-list cp2-manager-list"></div>
       </div>
       <div class="cp2-manager-transfer-icon">
         <i class="fa-solid fa-right-left"></i>
       </div>
       <div class="cp2-manager-pane">
-        <div id="cp2-mgr-right-title" class="cp2-manager-pane-title">当前分支列表</div>
+        <div id="cp2-mgr-right-title" class="cp2-manager-pane-title">${initialRightTitle}</div>
         <div id="cp2-mgr-right" class="cp2-picker-list cp2-manager-list"></div>
       </div>
     </div>

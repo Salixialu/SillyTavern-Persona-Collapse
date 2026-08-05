@@ -57,11 +57,15 @@ describe('persona branch panel rendering', () => {
     expect(panelSource).toContain('cp2-manager-target-branch');
     expect(panelSource).toContain('manager.linkChild(targetId, independentSourceId)');
     expect(panelSource).toContain('cp2-mgr-create-current-group');
-    expect(panelSource).toContain('选择目标分支');
-    expect(panelSource).toContain("if (leftTitle) leftTitle.textContent = '选择目标分支';");
-    expect(panelSource).toContain("if (rightTitle) rightTitle.textContent = '当前独立人设';");
+    expect(panelSource).toContain('目标分支');
+    expect(panelSource).toContain("if (leftTitle) leftTitle.textContent = '当前人设';");
+    expect(panelSource).toContain("if (rightTitle) rightTitle.innerHTML = '目标分支 (<span id=\"cp2-mgr-count\">0</span>)';");
     expect(panelSource).toContain("const managerHint = independentSourceId");
     expect(panelSource).toContain('targetPane.querySelectorAll<HTMLButtonElement>');
+    expect(panelSource).toContain("let mode: 'join' | 'manage'");
+    expect(panelSource).toContain('const sourceParentId = manager.findParentOf(id);');
+    expect(panelSource).toContain('来自分支：');
+    expect(panelSource).toContain('转移到');
     expect(panelSource).toContain('cp2-mgr-left-title');
     expect(panelSource).toContain('搜索目标分支...');
     expect(panelSource).not.toContain('cp2-mgr-subgroup-select');
@@ -70,6 +74,15 @@ describe('persona branch panel rendering', () => {
   it('keeps both manager lists independently scrollable', () => {
     expect(panelSource).toContain('cp2-manager-list');
     expect(panelSource).toContain('cp2-manager-columns');
+  });
+
+  it('keeps join mode separate from current branch management', () => {
+    expect(panelSource).toContain("mode = 'manage';");
+    expect(panelSource).toContain("if (mode === 'join' && independentSourceId)");
+    expect(panelSource).toContain("if (leftTitle) leftTitle.innerHTML = '可加入人设 (<span id=\"cp2-mgr-count\">0</span>)';");
+    expect(panelSource).toContain("if (rightTitle) rightTitle.textContent = '当前分支';");
+    expect(panelSource).toContain('manager.initGroup(currentParentId);');
+    expect(panelSource).toContain('manager.linkChild(currentParentId, id);');
   });
 
   it('deletes a subgroup only after its confirmation popup resolves', () => {
