@@ -81,6 +81,13 @@ describe('persona branch panel rendering', () => {
     expect(panelSource).toContain('variantsPanelDirty = false;');
   });
 
+  it('keeps the detail toolbar compact when no branch exists', () => {
+    expect(panelSource).toContain("const hasBranchContent = children.length > 0 || layout.root.some(item => item.type === 'subgroup');");
+    expect(panelSource).toContain("cp2-variants-header-no-branches");
+    expect(panelSource).toContain("if (children.length > 0) {");
+    expect(panelSource).toContain("children.length > 0 ? `<span class=\"cp2-variants-count\"");
+  });
+
   it('uses SortableJS as the only drag placement engine', () => {
     expect(panelSource).not.toContain("items.style.minHeight = '12px'");
     expect(sortableSource).toContain('readBranchLayoutSnapshot(options.root)');

@@ -138,6 +138,15 @@
   justify-content: space-between;
   gap: 4px;
 }
+.cp2-variants-header-no-branches {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+.cp2-variants-header-no-branches .cp2-surface-persona-slot,
+.cp2-variants-header-no-branches + .cp2-variants-list:empty {
+  display: none;
+}
 .cp2-surface-persona-slot {
   min-width: 0;
   flex: 1 1 auto;

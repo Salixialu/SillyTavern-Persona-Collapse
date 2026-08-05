@@ -549,6 +549,7 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
   const children = effectiveGroups[parentId] || [];
 
   const layout = manager.getBranchLayout(parentId, children);
+  const hasBranchContent = children.length > 0 || layout.root.some(item => item.type === 'subgroup');
   const subgroupEntries = manager.getSettings().subgroups[parentId] || [];
   const subgroupById = new Map(subgroupEntries.map(group => [group.id, group]));
   const subgroupAccentById = new Map(
@@ -573,7 +574,7 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
 
   // 使用原生风格工具栏，避免额外标题占用列表空间。
   const headerHTML = `
-    <div class="cp2-variants-header" role="toolbar" aria-label="${escapeHtml(tUi('personaCollapse.branchActions', '人设分支操作'))}">
+    <div class="cp2-variants-header${hasBranchContent ? '' : ' cp2-variants-header-no-branches'}" role="toolbar" aria-label="${escapeHtml(tUi('personaCollapse.branchActions', '人设分支操作'))}">
       <div class="cp2-surface-persona-slot"></div>
       <div class="cp2-variants-header-actions">
         <button class="menu_button cp2-toolbar-btn" id="cp2-create-persona" title="新建人设" aria-label="新建人设">
@@ -586,7 +587,7 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
           <i class="fa-solid fa-users-gear"></i>
         </button>
       </div>
-      <span class="cp2-variants-count" title="${escapeHtml(tUi('personaCollapse.branchCount', '分支内人设数量'))}">${children.length + 1}</span>
+      ${children.length > 0 ? `<span class="cp2-variants-count" title="${escapeHtml(tUi('personaCollapse.branchCount', '分支内人设数量'))}">${children.length + 1}</span>` : ''}
     </div>
     <div class="cp2-variants-list"></div>
   `;
@@ -755,7 +756,9 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
   };
 
   const surfaceSlot = panel.querySelector<HTMLElement>('.cp2-surface-persona-slot');
-  surfaceSlot?.appendChild(createPersonaItem(parentId, { isEntry: true, surface: true }));
+  if (children.length > 0) {
+    surfaceSlot?.appendChild(createPersonaItem(parentId, { isEntry: true, surface: true }));
+  }
 
   const createSubgroupSection = (groupId: string): HTMLElement => {
     const subgroup = subgroupById.get(groupId);
