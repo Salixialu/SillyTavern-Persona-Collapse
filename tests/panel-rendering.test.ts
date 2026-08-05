@@ -47,6 +47,8 @@ describe('persona branch panel rendering', () => {
     expect(panelSource).not.toContain('一键设为主卡');
     expect(panelSource).toContain('cp2-manager-drag-handle');
     expect(panelSource).toContain('manager.applyBranchLayoutSnapshot(currentParentId, snapshot, children)');
+    expect(panelSource).toContain('destroyManagerSortables?.();');
+    expect(panelSource).toContain('data-id="${escapeHtml(id)}"');
     expect(panelSource).toContain('cp2-manager-subgroup');
     expect(panelSource).not.toContain('promptMovePersonaDestination');
     expect(panelSource).not.toContain('manager.movePersonaToSubgroup(currentParentId, id, subgroupId, children)');

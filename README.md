@@ -4,7 +4,7 @@
 
 Persona Collapse（人设折叠）是一款 SillyTavern 前端扩展，适合拥有多套马甲、不同设定、不同注入配置的人设用户。它把相关人设收进同一条分支，并提供折叠、分组、排序、批量管理和自动收纳功能。
 
-当前版本：**3.6.1**
+当前版本：**3.6.2**
 
 ## 它解决什么问题？
 
@@ -217,5 +217,5 @@ dist/index.js
 ## 项目地址
 
 - GitHub：https://github.com/Salixialu/SillyTavern-Persona-Collapse
-- 当前版本：3.6.1
+- 当前版本：3.6.2
 - License：AGPL-3.0

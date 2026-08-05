@@ -1134,7 +1134,7 @@ function openGroupManager(initialParentId: string): void {
         ? `<span class="cp2-persona-tags">${tags.map(tag => `<span class="cp2-persona-tag" title="${escapeHtml(tag)}">${escapeHtml(tag)}</span>`).join('')}</span>`
         : '';
       leftHtml += `
-        <div class="cp2-picker-item" data-id="${id}" title="点击移入分支">
+        <div class="cp2-picker-item" data-id="${escapeHtml(id)}" title="点击移入分支">
           <img class="cp2-picker-avatar" src="${thumbUrl}" />
           <span class="cp2-picker-name">${escapeHtml(name)}${tagHtml}</span>
           <i class="fa-solid fa-arrow-right" style="opacity: 0.5;"></i>
@@ -1347,7 +1347,10 @@ function openGroupManager(initialParentId: string): void {
       renderVariantsPanel(true);
     }
   });
-  popup.show();
+  void popup.show().finally(() => {
+    destroyManagerSortables?.();
+    destroyManagerSortables = null;
+  });
 
   setTimeout(() => {
     renderPanes();
