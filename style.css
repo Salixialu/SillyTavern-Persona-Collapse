@@ -125,9 +125,10 @@
 #cp2-variants-panel {
   margin: 8px 0;
   padding: 6px 8px 8px;
-  background: transparent;
-  border: 1px solid color-mix(in srgb, var(--SmartThemeBorderColor) 65%, transparent);
+  background: color-mix(in srgb, var(--SmartThemeBodyColor) 4%, transparent);
+  border: 1px solid color-mix(in srgb, var(--SmartThemeBorderColor) 82%, transparent);
   border-radius: 6px;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--SmartThemeBodyColor) 5%, transparent);
 }
 .cp2-variants-header {
   min-height: 30px;
