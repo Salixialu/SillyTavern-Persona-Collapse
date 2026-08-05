@@ -713,6 +713,30 @@ body.square-avatars .cp2-picker-avatar {
   font-size: 0.9em;
   opacity: 0.8;
 }
+.cp2-manager-modebar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.cp2-manager-mode {
+  min-height: 30px;
+  padding: 5px 10px;
+  border: 1px solid var(--SmartThemeBorderColor);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--SmartThemeBodyColor);
+  cursor: pointer;
+  opacity: 0.7;
+  transition: all 0.15s ease;
+}
+.cp2-manager-mode:hover,
+.cp2-manager-mode.active {
+  border-color: var(--SmartThemeQuoteColor);
+  background: rgba(var(--SmartThemeQuoteColorRGB, 52, 152, 219), 0.14);
+  color: var(--SmartThemeBodyColor);
+  opacity: 1;
+}
 .cp2-manager-searchbar {
   display: flex;
   gap: 6px;

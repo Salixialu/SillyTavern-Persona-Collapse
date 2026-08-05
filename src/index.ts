@@ -941,7 +941,8 @@ function renderVariantsPanel(force = false, currentIdOverride: string | null = n
 /** 弹出批量管理面板：双栏 UI 管理分组及主卡 */
 function openGroupManager(initialParentId: string): void {
   let currentParentId = initialParentId;
-  let mode: 'join' | 'manage' = manager.isIndependent(initialParentId) ? 'join' : 'manage';
+  let mode: 'add-to-current' | 'join-another-branch' | 'manage-current-branch' =
+    manager.isIndependent(initialParentId) ? 'add-to-current' : 'manage-current-branch';
   let searchQuery = '';
   let filterMode: 'all' | 'samename' | 'samechar' = 'all';
   let pendingManagerSubgroupFocusId: string | null = null;
@@ -1050,7 +1051,7 @@ function openGroupManager(initialParentId: string): void {
     sourcePane.querySelector('#cp2-mgr-create-current-group')?.addEventListener('click', e => {
       e.stopPropagation();
       manager.initGroup(independentSourceId);
-      mode = 'manage';
+      mode = 'manage-current-branch';
       currentParentId = independentSourceId;
       renderPanes();
     });
@@ -1061,7 +1062,7 @@ function openGroupManager(initialParentId: string): void {
         const targetId = button.dataset.id;
         if (!targetId) return;
         manager.linkChild(targetId, independentSourceId);
-        mode = 'manage';
+        mode = 'manage-current-branch';
         currentParentId = targetId;
         toastr.success(`已将【${sourceName}】移入【${getPersonaName(targetId)}】分支`);
         renderAvatarBlock();
@@ -1080,20 +1081,31 @@ function openGroupManager(initialParentId: string): void {
     const searchInput = document.getElementById('cp2-mgr-search') as HTMLInputElement | null;
     if (!leftPane || !rightPane) return;
 
-    if (mode === 'join' && independentSourceId) {
+    if (mode === 'join-another-branch' && independentSourceId) {
       destroyManagerSortables?.();
       destroyManagerSortables = null;
       if (leftTitle) leftTitle.textContent = '当前人设';
       if (rightTitle) rightTitle.innerHTML = '目标分支 (<span id="cp2-mgr-count">0</span>)';
       if (hintText) hintText.textContent = '将当前人设加入某个目标分支，或以当前人设建立新分支。';
+      document.querySelectorAll<HTMLElement>('#cp2-mgr-modebar [data-manager-mode]').forEach(button => {
+        button.classList.toggle('active', button.dataset.managerMode === mode);
+      });
       if (searchInput) searchInput.placeholder = '搜索目标分支...';
       renderIndependentDestinationPane(leftPane, rightPane, document.getElementById('cp2-mgr-count'));
       return;
     }
 
+    const isAddingToCurrent = mode === 'add-to-current' && independentSourceId === currentParentId;
     if (leftTitle) leftTitle.innerHTML = '可加入人设 (<span id="cp2-mgr-count">0</span>)';
-    if (rightTitle) rightTitle.textContent = '当前分支';
-    if (hintText) hintText.textContent = '将左侧人设加入右侧当前分支，也可以在右侧排序、分组或移出分支。';
+    if (rightTitle) rightTitle.textContent = isAddingToCurrent ? '当前目标分支' : '当前分支';
+    if (hintText) {
+      hintText.textContent = isAddingToCurrent
+        ? '将左侧人设加入当前打开的人设；首次添加时会自动建立分支。'
+        : '将左侧人设加入右侧当前分支，也可以在右侧排序、分组或移出分支。';
+    }
+    document.querySelectorAll<HTMLElement>('#cp2-mgr-modebar [data-manager-mode]').forEach(button => {
+      button.classList.toggle('active', button.dataset.managerMode === mode);
+    });
     if (searchInput) searchInput.placeholder = '搜索可加入人设...';
 
     const effectiveGroups = manager.getEffectiveGroups();
@@ -1146,13 +1158,14 @@ function openGroupManager(initialParentId: string): void {
       `;
     }
     if (availableIds.length === 0) {
-      leftHtml = '<div style="opacity:0.5;text-align:center;padding:20px;">没有可用的独立人设</div>';
+      leftHtml = '<div style="opacity:0.5;text-align:center;padding:20px;">没有可加入的人设</div>';
     }
 
+    const hasCurrentGroup = manager.getSettings().manualGroups[currentParentId] !== undefined;
     let rightHtml = `
       <div class="cp2-manager-toolbar">
         <button id="cp2-mgr-create-subgroup" class="menu_button"><i class="fa-solid fa-folder-plus"></i> 新建分组</button>
-        <button id="cp2-mgr-disband" class="menu_button cp2-manager-disband"><i class="fa-solid fa-link-slash"></i> 解散分组</button>
+        ${hasCurrentGroup ? '<button id="cp2-mgr-disband" class="menu_button cp2-manager-disband"><i class="fa-solid fa-link-slash"></i> 解散分组</button>' : ''}
       </div>
       <div class="cp2-manager-branch">
     `;
@@ -1275,6 +1288,7 @@ function openGroupManager(initialParentId: string): void {
       e.stopPropagation();
       const name = await promptSubgroupName();
       if (!name) return;
+      manager.initGroup(currentParentId);
       pendingManagerSubgroupFocusId = manager.createSubgroup(currentParentId, name).id;
       renderPanes();
     });
@@ -1324,15 +1338,29 @@ function openGroupManager(initialParentId: string): void {
   }
 
   const managerHint = independentSourceId
-    ? '将当前人设加入某个目标分支，或以当前人设建立新分支。'
+    ? '将其它人设加入当前打开的人设，或切换为将当前人设加入其它分支。'
     : '将左侧人设加入右侧当前分支，也可以在右侧排序、分组或移出分支。';
   const initialLeftTitle = independentSourceId ? '当前人设' : '可加入人设';
   const initialRightTitle = independentSourceId ? '目标分支' : '当前分支';
+  const modeBar = independentSourceId
+    ? `
+      <div id="cp2-mgr-modebar" class="cp2-manager-modebar" role="tablist" aria-label="管理方式">
+        <button class="cp2-manager-mode active" data-manager-mode="add-to-current" role="tab">添加成员到当前人设</button>
+        <button class="cp2-manager-mode" data-manager-mode="manage-current-branch" role="tab">管理当前分支</button>
+        <button class="cp2-manager-mode" data-manager-mode="join-another-branch" role="tab">将当前人设加入其它分支</button>
+      </div>
+    `
+    : `
+      <div id="cp2-mgr-modebar" class="cp2-manager-modebar" role="tablist" aria-label="管理方式">
+        <span class="cp2-manager-mode active" role="tab">管理当前分支</span>
+      </div>
+    `;
   const popupContent = `
     <div class="cp2-manager-dialog">
     <div class="cp2-manager-hint">
       <i class="fa-solid fa-users"></i> <span id="cp2-mgr-hint-text">${escapeHtml(managerHint)}</span>
     </div>
+    ${modeBar}
     <div class="cp2-manager-searchbar">
       <input type="text" id="cp2-mgr-search" class="text_pole" placeholder="搜索可加入人设...">
       <button class="menu_button cp2-filter-btn" data-mode="all">全部</button>
@@ -1371,6 +1399,15 @@ function openGroupManager(initialParentId: string): void {
 
   setTimeout(() => {
     renderPanes();
+    document.querySelectorAll<HTMLButtonElement>('#cp2-mgr-modebar [data-manager-mode]').forEach(button => {
+      button.addEventListener('click', () => {
+        const nextMode = button.dataset.managerMode as typeof mode | undefined;
+        if (!nextMode) return;
+        mode = nextMode;
+        if (independentSourceId) currentParentId = independentSourceId;
+        renderPanes();
+      });
+    });
     const searchInput = document.getElementById('cp2-mgr-search') as HTMLInputElement;
     if (searchInput) {
       searchInput.addEventListener('input', () => {

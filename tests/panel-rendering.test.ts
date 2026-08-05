@@ -62,7 +62,7 @@ describe('persona branch panel rendering', () => {
     expect(panelSource).toContain("if (rightTitle) rightTitle.innerHTML = '目标分支 (<span id=\"cp2-mgr-count\">0</span>)';");
     expect(panelSource).toContain("const managerHint = independentSourceId");
     expect(panelSource).toContain('targetPane.querySelectorAll<HTMLButtonElement>');
-    expect(panelSource).toContain("let mode: 'join' | 'manage'");
+    expect(panelSource).toContain("let mode: 'add-to-current' | 'join-another-branch' | 'manage-current-branch'");
     expect(panelSource).toContain('const sourceParentId = manager.findParentOf(id);');
     expect(panelSource).toContain('来自分支：');
     expect(panelSource).toContain('转移到');
@@ -77,12 +77,14 @@ describe('persona branch panel rendering', () => {
   });
 
   it('keeps join mode separate from current branch management', () => {
-    expect(panelSource).toContain("mode = 'manage';");
-    expect(panelSource).toContain("if (mode === 'join' && independentSourceId)");
+    expect(panelSource).toContain("mode = 'manage-current-branch';");
+    expect(panelSource).toContain("if (mode === 'join-another-branch' && independentSourceId)");
     expect(panelSource).toContain("if (leftTitle) leftTitle.innerHTML = '可加入人设 (<span id=\"cp2-mgr-count\">0</span>)';");
-    expect(panelSource).toContain("if (rightTitle) rightTitle.textContent = '当前分支';");
+    expect(panelSource).toContain("if (rightTitle) rightTitle.textContent = isAddingToCurrent ? '当前目标分支' : '当前分支';");
     expect(panelSource).toContain('manager.initGroup(currentParentId);');
     expect(panelSource).toContain('manager.linkChild(currentParentId, id);');
+    expect(panelSource).toContain('data-manager-mode="add-to-current"');
+    expect(panelSource).toContain('data-manager-mode="join-another-branch"');
   });
 
   it('deletes a subgroup only after its confirmation popup resolves', () => {
