@@ -382,9 +382,9 @@ body.square-avatars .cp2-variant-avatar {
   border-radius: 4px;
 }
 .cp2-variant-drag-handle {
-  width: 14px;
-  margin-left: -4px;
-  margin-right: -2px;
+  width: 18px;
+  margin-left: -2px;
+  margin-right: 2px;
   opacity: 0.42;
   cursor: grab;
   transition: opacity 0.2s;
@@ -392,8 +392,8 @@ body.square-avatars .cp2-variant-avatar {
 }
 .cp2-sort-handle {
   position: relative;
-  flex: 0 0 14px;
-  width: 14px;
+  flex: 0 0 18px;
+  width: 18px;
   height: 32px;
   cursor: grab;
   opacity: 0.55;
@@ -412,12 +412,12 @@ body.square-avatars .cp2-variant-avatar {
   transition: opacity 0.15s, background-color 0.15s;
 }
 .cp2-sort-handle::before {
-  left: 3px;
+  left: 5px;
   height: 22px;
   opacity: 0.62;
 }
 .cp2-sort-handle::after {
-  left: 8px;
+  left: 11px;
   height: 10px;
   background: var(--cp2-drag-accent, var(--SmartThemeBodyColor, #9aa0a6));
   opacity: 0.55;
@@ -427,16 +427,16 @@ body.square-avatars .cp2-variant-avatar {
   background: var(--SmartThemeBodyColor, #9aa0a6);
 }
 .cp2-sort-handle:hover {
-  opacity: 0.82;
+  opacity: 0.95;
 }
 .cp2-sort-handle:hover::before {
-  opacity: 0.9;
+  opacity: 0.98;
 }
 .cp2-sort-handle:hover::after {
   background: var(--cp2-drag-accent, var(--SmartThemeBodyColor, #9aa0a6));
 }
 .cp2-sort-handle:hover::after {
-  opacity: 0.85;
+  opacity: 0.95;
 }
 .cp2-sort-handle:active {
   cursor: grabbing;
@@ -865,8 +865,9 @@ body.square-avatars .cp2-picker-avatar {
   flex: 1 1 auto;
 }
 .cp2-manager-drag-handle {
-  flex: 0 0 14px;
-  margin: 0 2px 0 -2px;
+  flex: 0 0 18px;
+  width: 18px;
+  margin: 0 3px 0 0;
   opacity: 0.45;
   cursor: grab;
 }
