@@ -1035,12 +1035,12 @@ function openGroupManager(initialParentId: string): void {
         const count = manager.getEffectiveGroups()[id]?.length ?? 0;
         return `
           <button class="cp2-manager-target-branch" data-id="${escapeHtml(id)}" title="将${escapeHtml(sourceName)}移入此分支">
+            <i class="fa-solid fa-arrow-right cp2-manager-target-arrow"></i>
             <img class="cp2-picker-avatar" src="${getThumbUrl(id)}" />
             <span class="cp2-manager-target-copy">
               <strong>${escapeHtml(manager.getGroupName(id, getPersonaName(id)))}</strong>
               <span>${count} 个人设 · ${escapeHtml(getPersonaName(id))}</span>
             </span>
-            <i class="fa-solid fa-arrow-right"></i>
           </button>
         `;
       }).join('')

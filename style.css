@@ -812,6 +812,12 @@ body.square-avatars .cp2-picker-avatar {
   border-color: var(--SmartThemeQuoteColor);
   background: rgba(var(--SmartThemeQuoteColorRGB, 52, 152, 219), 0.1);
 }
+.cp2-manager-target-arrow {
+  flex: 0 0 auto;
+  width: 20px;
+  text-align: center;
+  opacity: 0.72;
+}
 .cp2-manager-primary-action {
   width: 100%;
   margin-bottom: 8px;
