@@ -89,16 +89,6 @@ function tUi(key: string, fallback: string): string {
   return typeof translated === 'string' ? translated : fallback;
 }
 
-function buildCopyName(sourceName: string): string {
-  const base = `${sourceName}_副本`;
-  const existingNames = new Set(Object.values(power_user.personas || {}));
-  if (!existingNames.has(base)) return base;
-
-  let index = 2;
-  while (existingNames.has(`${base}${index}`)) index++;
-  return `${base}${index}`;
-}
-
 function buildAvatarId(personaName: string): string {
   const safeName = personaName.replace(/[^a-zA-Z0-9]/g, '') || 'persona';
   let avatarId = `${Date.now()}-${safeName}.png`;
@@ -241,7 +231,7 @@ async function editPersonaTags(personaId: string): Promise<void> {
 
 async function duplicatePersonaIntoGroup(parentId: string, sourceId: string): Promise<void> {
   const sourceName = getPersonaName(sourceId);
-  const newName = buildCopyName(sourceName);
+  const newName = sourceName;
   const avatarId = buildAvatarId(newName);
   let usedFallbackAvatar = false;
 
