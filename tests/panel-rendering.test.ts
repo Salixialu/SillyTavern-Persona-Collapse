@@ -123,7 +123,10 @@ describe('persona branch panel rendering', () => {
     expect(sortableSource).toContain('readBranchLayoutSnapshot(options.root)');
     expect(sortableSource).not.toContain('cp2-manual-drop-indicator');
     expect(sortableSource).not.toContain('pointermove');
-    expect(sortableSource).not.toContain('forceFallback: true');
+    expect(sortableSource).toContain('filter: DRAG_FILTER');
+    expect(sortableSource).toContain('preventOnFilter: true');
+    expect(sortableSource).toContain('forceFallback: true');
+    expect(sortableSource).toContain('fallbackOnBody: true');
   });
 
   it('keeps the first empty subgroup drop target reachable', () => {

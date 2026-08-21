@@ -22,6 +22,7 @@ const INSERT_BEFORE_CLASS = 'cp2-sort-insert-before';
 const INSERT_AFTER_CLASS = 'cp2-sort-insert-after';
 const SOURCE_HIDDEN_CLASS = 'cp2-sort-source';
 const HOVER_EXPAND_DELAY_MS = 500;
+const DRAG_FILTER = 'button, input, textarea, select, .cp2-icon-btn, .cp2-variant-action-btn';
 
 interface PendingDrop {
   to: HTMLElement;
@@ -167,8 +168,9 @@ export function mountBranchSortables(options: BranchSortableOptions): () => void
   const sharedOptions: Sortable.Options = {
     group: 'cp2-branch-layout',
     animation: reducedMotion ? 0 : 120,
-    handle: '.cp2-sort-handle',
     draggable: ROOT_ITEM_SELECTOR,
+    filter: DRAG_FILTER,
+    preventOnFilter: true,
     emptyInsertThreshold: 48,
     ghostClass: 'cp2-sort-ghost',
     chosenClass: 'cp2-sort-chosen',
@@ -202,6 +204,8 @@ export function mountBranchSortables(options: BranchSortableOptions): () => void
     delayOnTouchOnly: true,
     touchStartThreshold: 5,
     fallbackTolerance: 4,
+    forceFallback: true,
+    fallbackOnBody: true,
     scroll: true,
     scrollSensitivity: 60,
     scrollSpeed: 16,

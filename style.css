@@ -378,6 +378,22 @@
   cursor: pointer;
   transition: all 0.2s ease;
 }
+.cp2-persona-sort-item {
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.cp2-persona-sort-item.cp2-sort-chosen {
+  cursor: grabbing;
+}
+.cp2-persona-sort-item button,
+.cp2-persona-sort-item input,
+.cp2-persona-sort-item textarea,
+.cp2-persona-sort-item select {
+  cursor: pointer;
+  user-select: auto;
+  -webkit-user-select: auto;
+}
 .cp2-variant-item:hover {
   background: var(--white20a);
 }
