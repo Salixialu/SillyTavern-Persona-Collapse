@@ -220,17 +220,20 @@ export function mountBranchSortables(options: BranchSortableOptions): () => void
       }, 30000);
     },
     onEnd: () => {
-      if (draggedElement && pendingDrop) {
-        const { to, related, willInsertAfter } = pendingDrop;
+      const drop = pendingDrop;
+      let placed = false;
+      if (draggedElement && drop) {
+        const { to, related, willInsertAfter } = drop;
         if (to.isConnected && (!related || related.parentElement === to) && related !== draggedElement) {
           if (related) {
             to.insertBefore(draggedElement, willInsertAfter ? related.nextSibling : related);
           } else {
             to.appendChild(draggedElement);
           }
+          placed = true;
         }
       }
-      const accepted = options.onCommit(readBranchLayoutSnapshot(options.root));
+      const accepted = placed && options.onCommit(readBranchLayoutSnapshot(options.root));
       stopDrag();
       if (!accepted) queueMicrotask(options.onReject);
     },

@@ -1682,9 +1682,24 @@ function setupTouchDrag(): () => void {
   if (!block) return () => undefined;
   const controller = new AbortController();
 
+  const cancelTouchDrag = (): void => {
+    if (touchTimer) clearTimeout(touchTimer);
+    touchTimer = null;
+    touchDragEl?.classList.remove('cp2-dragging');
+    lastTouchTarget?.classList.remove('cp2-drag-target');
+    touchDragging = false;
+    touchDragId = null;
+    touchDragEl = null;
+    lastTouchTarget = null;
+  };
+
   block.addEventListener('touchstart', evt => {
     const settings = manager?.getSettings();
     if (!settings?.enabled) return;
+    if (evt.touches.length !== 1) {
+      cancelTouchDrag();
+      return;
+    }
 
     const container = (evt.target as Element).closest('.avatar-container');
     if (!container) return;
@@ -1696,6 +1711,7 @@ function setupTouchDrag(): () => void {
     touchStartX = touch.clientX;
     touchStartY = touch.clientY;
 
+    if (touchTimer) clearTimeout(touchTimer);
     touchTimer = setTimeout(() => {
       touchDragging = true;
       touchDragId = id;
@@ -1707,6 +1723,10 @@ function setupTouchDrag(): () => void {
   }, { passive: true, signal: controller.signal });
 
   block.addEventListener('touchmove', evt => {
+    if (evt.touches.length !== 1) {
+      cancelTouchDrag();
+      return;
+    }
     const touch = evt.touches[0];
     const dx = Math.abs(touch.clientX - touchStartX);
     const dy = Math.abs(touch.clientY - touchStartY);
@@ -1738,6 +1758,10 @@ function setupTouchDrag(): () => void {
   }, { passive: false, signal: controller.signal });
 
   block.addEventListener('touchend', evt => {
+    if (evt.changedTouches.length === 0) {
+      cancelTouchDrag();
+      return;
+    }
     if (touchTimer) { clearTimeout(touchTimer); touchTimer = null; }
 
     if (touchDragging && touchDragId) {
@@ -1772,27 +1796,16 @@ function setupTouchDrag(): () => void {
     lastTouchTarget = null;
   }, { signal: controller.signal });
 
-  block.addEventListener('touchcancel', () => {
-    if (touchTimer) clearTimeout(touchTimer);
-    touchTimer = null;
-    touchDragEl?.classList.remove('cp2-dragging');
-    lastTouchTarget?.classList.remove('cp2-drag-target');
-    touchDragging = false;
-    touchDragId = null;
-    touchDragEl = null;
-    lastTouchTarget = null;
+  block.addEventListener('touchcancel', cancelTouchDrag, { signal: controller.signal });
+  window.addEventListener('blur', cancelTouchDrag, { signal: controller.signal });
+  window.addEventListener('pagehide', cancelTouchDrag, { signal: controller.signal });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') cancelTouchDrag();
   }, { signal: controller.signal });
 
   return () => {
     controller.abort();
-    if (touchTimer) clearTimeout(touchTimer);
-    touchTimer = null;
-    touchDragEl?.classList.remove('cp2-dragging');
-    lastTouchTarget?.classList.remove('cp2-drag-target');
-    touchDragging = false;
-    touchDragId = null;
-    touchDragEl = null;
-    lastTouchTarget = null;
+    cancelTouchDrag();
   };
 }
 
