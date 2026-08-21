@@ -380,6 +380,7 @@
 }
 .cp2-persona-sort-item {
   cursor: grab;
+  touch-action: pan-y;
   user-select: none;
   -webkit-user-select: none;
 }
@@ -393,6 +394,9 @@
   cursor: pointer;
   user-select: auto;
   -webkit-user-select: auto;
+}
+.cp2-sort-handle {
+  touch-action: none;
 }
 .cp2-variant-item:hover {
   background: var(--white20a);

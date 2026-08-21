@@ -125,8 +125,12 @@ describe('persona branch panel rendering', () => {
     expect(sortableSource).not.toContain('pointermove');
     expect(sortableSource).toContain('filter: DRAG_FILTER');
     expect(sortableSource).toContain('preventOnFilter: true');
+    expect(sortableSource).toContain("handle: coarsePointer ? '.cp2-sort-handle' : undefined");
+    expect(sortableSource).toContain('delay: coarsePointer ? 260 : 0');
     expect(sortableSource).toContain('forceFallback: true');
     expect(sortableSource).toContain('fallbackOnBody: true');
+    expect(sortableSource).toContain("fallbackClass: FALLBACK_DRAG_CLASS");
+    expect(sortableSource).toContain('clearFallbackDragArtifacts');
   });
 
   it('keeps the first empty subgroup drop target reachable', () => {
