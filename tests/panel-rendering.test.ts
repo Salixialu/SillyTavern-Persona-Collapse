@@ -123,7 +123,14 @@ describe('persona branch panel rendering', () => {
     expect(sortableSource).toContain('readBranchLayoutSnapshot(options.root)');
     expect(sortableSource).not.toContain('cp2-manual-drop-indicator');
     expect(sortableSource).not.toContain('pointermove');
-    expect(sortableSource).not.toContain('forceFallback: true');
+    expect(sortableSource).toContain('filter: DRAG_FILTER');
+    expect(sortableSource).toContain('preventOnFilter: true');
+    expect(sortableSource).toContain("handle: coarsePointer ? '.cp2-sort-handle' : undefined");
+    expect(sortableSource).toContain('delay: coarsePointer ? 260 : 0');
+    expect(sortableSource).toContain('forceFallback: true');
+    expect(sortableSource).toContain('fallbackOnBody: true');
+    expect(sortableSource).toContain("fallbackClass: FALLBACK_DRAG_CLASS");
+    expect(sortableSource).toContain('clearFallbackDragArtifacts');
   });
 
   it('keeps the first empty subgroup drop target reachable', () => {
@@ -143,6 +150,8 @@ describe('persona branch panel rendering', () => {
     expect(sortableSource).toContain('to.insertBefore(draggedElement');
     expect(sortableSource).toContain('const isCrossContainer = event.to !== draggedElement?.parentElement;');
     expect(sortableSource).toContain('return isCrossContainer;');
+    expect(sortableSource).toContain('const drop = pendingDrop;');
+    expect(sortableSource).toContain('const accepted = placed && options.onCommit');
     expect(sortableSource).toContain('dragWatchdog = setTimeout');
     expect(sortableSource).toContain('options.onReject();');
     expect(sortableSource).toContain('cp2-sort-source');
@@ -151,6 +160,10 @@ describe('persona branch panel rendering', () => {
     expect(panelSource).toContain('runtimeCleanup?.();');
     expect(panelSource).toContain('clearInterval(panelInterval);');
     expect(panelSource).toContain('bodyObserver.disconnect();');
+    expect(panelSource).toContain('const cancelTouchDrag = (): void =>');
+    expect(panelSource).toContain('evt.touches.length !== 1');
+    expect(panelSource).toContain("window.addEventListener('pagehide', cancelTouchDrag");
+    expect(panelSource).toContain("document.visibilityState !== 'visible'");
     expect(panelSource).toContain('pendingSubgroupFocusId');
     expect(panelSource).not.toContain('canMoveUp');
     expect(panelSource).not.toContain('cp2-mgr-order-btn');

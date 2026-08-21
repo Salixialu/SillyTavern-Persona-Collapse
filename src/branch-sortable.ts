@@ -21,7 +21,9 @@ const DROP_TARGET_CLASS = 'cp2-drop-target';
 const INSERT_BEFORE_CLASS = 'cp2-sort-insert-before';
 const INSERT_AFTER_CLASS = 'cp2-sort-insert-after';
 const SOURCE_HIDDEN_CLASS = 'cp2-sort-source';
+const FALLBACK_DRAG_CLASS = 'cp2-sort-fallback';
 const HOVER_EXPAND_DELAY_MS = 500;
+const DRAG_FILTER = 'button, input, textarea, select, .cp2-icon-btn, .cp2-variant-action-btn';
 
 interface PendingDrop {
   to: HTMLElement;
@@ -102,10 +104,18 @@ export function mountBranchSortables(options: BranchSortableOptions): () => void
   let pendingDrop: PendingDrop | null = null;
   let dragWatchdog: ReturnType<typeof setTimeout> | null = null;
   const reducedMotion = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+  const coarsePointer = globalThis.matchMedia?.('(pointer: coarse)').matches ?? false;
 
   const clearHoverTimer = (): void => {
     if (hoverTimer) clearTimeout(hoverTimer);
     hoverTimer = null;
+  };
+
+  const clearFallbackDragArtifacts = (): void => {
+    options.root.ownerDocument.querySelectorAll<HTMLElement>(`.${FALLBACK_DRAG_CLASS}`)
+      .forEach(element => element.remove());
+    options.root.ownerDocument.querySelectorAll<HTMLElement>('.cp2-sort-drag')
+      .forEach(element => element.classList.remove('cp2-sort-drag'));
   };
 
   const stopDrag = (): void => {
@@ -119,6 +129,7 @@ export function mountBranchSortables(options: BranchSortableOptions): () => void
     draggedElement?.classList.remove(SOURCE_HIDDEN_CLASS);
     draggedElement = null;
     pendingDrop = null;
+    clearFallbackDragArtifacts();
     if (dragWatchdog) clearTimeout(dragWatchdog);
     dragWatchdog = null;
     if (wasActive) options.onDragStateChange(false);
@@ -167,8 +178,10 @@ export function mountBranchSortables(options: BranchSortableOptions): () => void
   const sharedOptions: Sortable.Options = {
     group: 'cp2-branch-layout',
     animation: reducedMotion ? 0 : 120,
-    handle: '.cp2-sort-handle',
+    handle: coarsePointer ? '.cp2-sort-handle' : undefined,
     draggable: ROOT_ITEM_SELECTOR,
+    filter: DRAG_FILTER,
+    preventOnFilter: true,
     emptyInsertThreshold: 48,
     ghostClass: 'cp2-sort-ghost',
     chosenClass: 'cp2-sort-chosen',
@@ -198,10 +211,13 @@ export function mountBranchSortables(options: BranchSortableOptions): () => void
       // 同一容器内只预览落点，禁止 SortableJS 持续改写列表布局。
       return false;
     },
-    delay: 180,
+    delay: coarsePointer ? 260 : 0,
     delayOnTouchOnly: true,
     touchStartThreshold: 5,
     fallbackTolerance: 4,
+    forceFallback: true,
+    fallbackOnBody: true,
+    fallbackClass: FALLBACK_DRAG_CLASS,
     scroll: true,
     scrollSensitivity: 60,
     scrollSpeed: 16,
@@ -220,17 +236,20 @@ export function mountBranchSortables(options: BranchSortableOptions): () => void
       }, 30000);
     },
     onEnd: () => {
-      if (draggedElement && pendingDrop) {
-        const { to, related, willInsertAfter } = pendingDrop;
+      const drop = pendingDrop;
+      let placed = false;
+      if (draggedElement && drop) {
+        const { to, related, willInsertAfter } = drop;
         if (to.isConnected && (!related || related.parentElement === to) && related !== draggedElement) {
           if (related) {
             to.insertBefore(draggedElement, willInsertAfter ? related.nextSibling : related);
           } else {
             to.appendChild(draggedElement);
           }
+          placed = true;
         }
       }
-      const accepted = options.onCommit(readBranchLayoutSnapshot(options.root));
+      const accepted = placed && options.onCommit(readBranchLayoutSnapshot(options.root));
       stopDrag();
       if (!accepted) queueMicrotask(options.onReject);
     },

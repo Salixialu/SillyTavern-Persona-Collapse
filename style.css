@@ -378,6 +378,26 @@
   cursor: pointer;
   transition: all 0.2s ease;
 }
+.cp2-persona-sort-item {
+  cursor: grab;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.cp2-persona-sort-item.cp2-sort-chosen {
+  cursor: grabbing;
+}
+.cp2-persona-sort-item button,
+.cp2-persona-sort-item input,
+.cp2-persona-sort-item textarea,
+.cp2-persona-sort-item select {
+  cursor: pointer;
+  user-select: auto;
+  -webkit-user-select: auto;
+}
+.cp2-sort-handle {
+  touch-action: none;
+}
 .cp2-variant-item:hover {
   background: var(--white20a);
 }
@@ -402,6 +422,9 @@ body.square-avatars .cp2-variant-avatar {
   margin-right: 2px;
   opacity: 0.42;
   cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
   transition: opacity 0.2s;
   padding: 2px 0;
 }
@@ -411,6 +434,9 @@ body.square-avatars .cp2-variant-avatar {
   width: 18px;
   height: 32px;
   cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
   opacity: 0.55;
   text-align: center;
   font-size: 0;
@@ -460,8 +486,14 @@ body.square-avatars .cp2-variant-avatar {
   opacity: 0.3;
   border: 1px dashed var(--SmartThemeQuoteColor);
 }
+.cp2-sort-drag {
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
 .cp2-sort-source {
-  visibility: hidden !important;
+  opacity: 0.18 !important;
+  pointer-events: none;
 }
 .cp2-root-item.cp2-sort-insert-before,
 .cp2-root-item.cp2-sort-insert-after,
