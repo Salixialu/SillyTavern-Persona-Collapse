@@ -11,12 +11,18 @@
     ],
     "target": "ESNext",
     "module": "ESNext",
+<<<<<<< HEAD
     "outDir": "dist",
     "baseUrl": ".",
     "paths": {
       "sillytavern/*": [
         "../../../02-development/types/sillytavern/*"
       ],
+=======
+    "rootDir": ".",
+    "outDir": "dist",
+    "paths": {
+>>>>>>> 6a834e584103185c14d68e73a012be1010d971d4
       "@util/*": [
         "./util/*"
       ],
