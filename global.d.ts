@@ -28,6 +28,7 @@ declare module '*.vue' {
   export default component;
 }
 
+<<<<<<< HEAD
 type BluetoothLEScanFilter = object;
 type BluetoothServiceUUID = string | number;
 type BluetoothDevice = object;
@@ -57,6 +58,8 @@ declare module 'sillytavern/popup' {
   }
 }
 
+=======
+>>>>>>> 1fccafa497a86147fb293397875ec0460136e4f6
 declare const YAML: typeof import('yaml');
 
 declare const z: typeof import('zod');
