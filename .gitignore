@@ -11,4 +11,7 @@ pnpm-debug.log*
 
 auto-imports.d.ts
 components.d.ts
+<<<<<<< HEAD
 releases/
+=======
+>>>>>>> cf09cb02c590de46d565966e950150bafcf24c54
